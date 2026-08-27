@@ -34,6 +34,15 @@ class AdminPanelProvider extends PanelProvider
             ])
 
             /*
+             * A custom theme, so Tailwind utilities work in our own Blade
+             * views. Filament ships a pre-compiled stylesheet that contains
+             * only the classes its own components use; without this, utility
+             * classes written in a custom page silently do nothing and the
+             * layout collapses into stacked prose.
+             */
+            ->viteTheme('resources/css/filament/admin/theme.css')
+
+            /*
              * The account is the tenant, and therefore the security boundary.
              *
              * Filament scopes every resource query through the `account`

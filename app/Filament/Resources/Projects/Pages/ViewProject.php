@@ -7,9 +7,11 @@ use App\Filament\Widgets\ProjectDistributionChart;
 use App\Filament\Widgets\ProjectHeadlineStats;
 use App\Filament\Widgets\ProjectInstallsChart;
 use App\Models\DailyStat;
+use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Support\Icons\Heroicon;
 
 /**
  * The project overview.
@@ -56,7 +58,15 @@ class ViewProject extends ViewRecord
 
     protected function getHeaderActions(): array
     {
-        return [EditAction::make()];
+        return [
+            Action::make('reports')
+                ->label('Reports')
+                ->icon(Heroicon::OutlinedChartBar)
+                ->color('gray')
+                ->url(fn () => ProjectResource::getUrl('reports', ['record' => $this->record])),
+
+            EditAction::make(),
+        ];
     }
 
     protected function getHeaderWidgets(): array

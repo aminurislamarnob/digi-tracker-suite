@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Deactivations;
 
+use App\Filament\Actions\ExportTableAction;
 use App\Filament\Resources\Deactivations\Pages\ListDeactivations;
 use App\Models\Deactivation;
 use App\Models\DeactivationReason;
@@ -90,6 +91,18 @@ class DeactivationResource extends Resource
                 Filter::make('still_gone')
                     ->label('Have not come back')
                     ->query(fn (Builder $query) => $query->whereNull('reactivated_at')),
+            ])
+            ->headerActions([
+                ExportTableAction::for([
+                    'When' => fn ($d) => $d->created_at?->toDateTimeString(),
+                    'Reason' => fn ($d) => $d->reasonLabel(),
+                    'Comment' => 'reason_info',
+                    'Site' => 'site.canonical_url',
+                    'Project' => 'project.name',
+                    'Plugin version' => 'project_version',
+                    'Theme' => 'theme_name',
+                    'Came back' => fn ($d) => $d->reactivated_at?->toDateTimeString(),
+                ], fn ($query) => $query->with(['site:id,canonical_url', 'project:id,name'])),
             ])
             ->defaultSort('created_at', 'desc');
     }

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Sites;
 
+use App\Filament\Actions\ExportTableAction;
 use App\Filament\Resources\Sites\Pages\ListSites;
 use App\Filament\Resources\Sites\Pages\ViewSite;
 use App\Models\Project;
@@ -153,6 +154,26 @@ class SiteResource extends Resource
                     ->default(false),
             ])
             ->recordActions([ViewAction::make()])
+            ->headerActions([
+                /*
+                 * Columns listed explicitly, not read from the table: adding
+                 * a column above must never silently widen what leaves in a
+                 * file. Note what is absent -- the plugin inventory, which is
+                 * aggregate-view only and never exported.
+                 */
+                ExportTableAction::for([
+                    'Site' => 'canonical_url',
+                    'Project' => 'project.name',
+                    'Status' => 'status',
+                    'Plugin version' => 'current_version',
+                    'WordPress' => 'wp_version',
+                    'PHP' => 'php_version',
+                    'Country' => 'country',
+                    'Local' => fn ($site) => $site->is_local ? 'yes' : 'no',
+                    'First seen' => fn ($site) => $site->first_seen_at?->toDateString(),
+                    'Last seen' => fn ($site) => $site->last_seen_at?->toDateString(),
+                ], fn ($query) => $query->with('project:id,name')),
+            ])
             ->defaultSort('last_seen_at', 'desc');
     }
 

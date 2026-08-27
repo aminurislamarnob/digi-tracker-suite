@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\EndUsers;
 
+use App\Filament\Actions\ExportTableAction;
 use App\Filament\Resources\EndUsers\Pages\ListEndUsers;
 use App\Models\EndUser;
 use App\Models\Project;
@@ -85,6 +86,24 @@ class EndUserResource extends Resource
                         fn (Builder $query) => $query->where('email_index', EndUser::indexFor($data['email'])),
                     ))
                     ->indicateUsing(fn (array $data) => filled($data['email'] ?? null) ? 'Email: '.$data['email'] : null),
+            ])
+            ->headerActions([
+                /*
+                 * This one leaves the building with contact details in it,
+                 * which is the point -- an author needs to be able to reach
+                 * their users -- but it is also the export most worth being
+                 * deliberate about. Marketing consent travels with it so
+                 * nobody has to guess who may be mailed.
+                 */
+                ExportTableAction::for([
+                    'Name' => fn ($u) => trim($u->first_name.' '.$u->last_name),
+                    'Email' => 'email',
+                    'Project' => 'project.name',
+                    'Sites' => 'sites_count',
+                    'Marketing consent' => fn ($u) => $u->hasMarketingConsent() ? 'given' : 'not given',
+                    'First seen' => fn ($u) => $u->first_seen_at?->toDateString(),
+                    'Last seen' => fn ($u) => $u->last_seen_at?->toDateString(),
+                ], fn ($query) => $query->with('project:id,name')->withCount('sites')),
             ])
             ->defaultSort('last_seen_at', 'desc');
     }

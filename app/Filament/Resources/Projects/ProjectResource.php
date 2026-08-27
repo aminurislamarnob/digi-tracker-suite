@@ -5,7 +5,10 @@ namespace App\Filament\Resources\Projects;
 use App\Filament\Resources\Projects\Pages\CreateProject;
 use App\Filament\Resources\Projects\Pages\EditProject;
 use App\Filament\Resources\Projects\Pages\ListProjects;
+use App\Filament\Resources\Projects\Pages\ProjectReports;
 use App\Filament\Resources\Projects\Pages\ViewProject;
+use App\Filament\Resources\Projects\RelationManagers\DeactivationReasonsRelationManager;
+use App\Filament\Resources\Projects\RelationManagers\MetaFieldsRelationManager;
 use App\Models\DailyStat;
 use App\Models\Project;
 use BackedEnum;
@@ -138,12 +141,25 @@ class ProjectResource extends Resource
             ->defaultSort('name');
     }
 
+    /**
+     * The editors live under the project, because both are project-scoped:
+     * a metadata key and a reason id are only unique per project.
+     */
+    public static function getRelations(): array
+    {
+        return [
+            MetaFieldsRelationManager::class,
+            DeactivationReasonsRelationManager::class,
+        ];
+    }
+
     public static function getPages(): array
     {
         return [
             'index' => ListProjects::route('/'),
             'create' => CreateProject::route('/create'),
             'view' => ViewProject::route('/{record}'),
+            'reports' => ProjectReports::route('/{record}/reports'),
             'edit' => EditProject::route('/{record}/edit'),
         ];
     }
