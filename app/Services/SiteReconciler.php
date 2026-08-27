@@ -132,6 +132,21 @@ class SiteReconciler
             $attributes['country'] = $this->geo->country($ip) ?? $site?->country;
         }
 
+        /*
+         * A partial payload must not erase what we already know.
+         *
+         * Not every route carries the full insights bundle -- a hand-rolled
+         * integration, an older client, or a deactivation posted from a
+         * half-loaded admin page can arrive with the environment missing.
+         * Writing null over a known PHP version would quietly empty the
+         * column that answers "can we drop 7.4?".
+         */
+        if ($site) {
+            foreach (['name', 'ip', 'ua_fingerprint', 'current_version', 'wp_version', 'php_version', 'country'] as $field) {
+                $attributes[$field] = ($attributes[$field] ?? null) ?: $site->{$field};
+            }
+        }
+
         if (! $site) {
             return Site::create($attributes + [
                 'account_id' => $payload->account_id,

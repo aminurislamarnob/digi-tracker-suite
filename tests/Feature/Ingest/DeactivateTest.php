@@ -123,6 +123,31 @@ class DeactivateTest extends TestCase
         $this->assertSame(1, Deactivation::acrossAccounts()->whereNull('reactivated_at')->count());
     }
 
+    /**
+     * A deactivation can arrive from a half-loaded admin page with only
+     * the reason attached. Writing null over a known PHP version would
+     * quietly empty the column that answers "can we drop 7.4?".
+     */
+    public function test_a_partial_payload_does_not_erase_what_we_know(): void
+    {
+        $this->track($this->project)->assertOk();
+
+        $this->post('/deactivate', [
+            'hash' => $this->project->hash,
+            'url' => 'https://example.com',
+            'project_version' => '2.2.4',
+            'reason_id' => 'other',
+            'is_local' => '',
+        ])->assertOk();
+
+        $site = Site::acrossAccounts()->sole();
+
+        $this->assertSame('8.2.4', $site->php_version);
+        $this->assertSame('6.8', $site->wp_version);
+        $this->assertSame('Example Site', $site->name);
+        $this->assertSame(Site::STATUS_DEACTIVATED, $site->status);
+    }
+
     public function test_an_unknown_hash_is_rejected(): void
     {
         $this->deactivate($this->project, ['hash' => '00000000-0000-4000-8000-000000000000'])

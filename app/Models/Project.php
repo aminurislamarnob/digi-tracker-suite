@@ -22,6 +22,19 @@ class Project extends Model
         return ['is_active' => 'boolean'];
     }
 
+    /**
+     * Slugs in dashboard URLs, never ids.
+     *
+     * The slug is unique per account, so it says nothing about how many
+     * projects exist across the platform -- and it makes a link readable
+     * enough to paste into a ticket. The hash stays out of URLs entirely:
+     * it is the ingest routing key, and it belongs in a request body.
+     */
+    public function getRouteKeyName(): string
+    {
+        return 'slug';
+    }
+
     protected static function booted(): void
     {
         static::creating(function (Project $project) {
