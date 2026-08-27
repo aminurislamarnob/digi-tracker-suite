@@ -3,6 +3,7 @@
 namespace Tests\Feature\Ingest;
 
 use App\Models\Project;
+use App\Models\RawPayload;
 use App\Models\TrackingSkip;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -62,6 +63,29 @@ class TrackingSkippedTest extends TestCase
 
         $this->assertDatabaseCount('sites', 0);
         $this->assertDatabaseCount('end_users', 0);
+    }
+
+    /**
+     * This is the one route that fires without consent, which is defensible
+     * only because what it carries identifies nobody. An IP is personal
+     * data and the user agent carries md5(home_url), a stable site marker:
+     * recording either would turn a refusal into a record of who refused.
+     */
+    public function test_a_refusal_records_nothing_that_identifies_anyone(): void
+    {
+        $this->post('/tracking-skipped', [
+            'hash' => $this->project->hash,
+            'previously_skipped' => '',
+        ], ['HTTP_USER_AGENT' => 'DigiTracker/'.md5('https://example.com').';'])->assertOk();
+
+        $payload = RawPayload::acrossAccounts()->sole();
+
+        $this->assertNull($payload->ip);
+        $this->assertNull($payload->user_agent);
+        $this->assertSame(['previously_skipped' => false], $payload->payload);
+
+        // And nothing on the counted row either.
+        $this->assertArrayNotHasKey('ip', TrackingSkip::acrossAccounts()->sole()->getAttributes());
     }
 
     public function test_an_unknown_hash_is_rejected(): void

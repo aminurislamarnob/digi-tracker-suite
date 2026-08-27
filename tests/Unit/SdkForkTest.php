@@ -168,6 +168,58 @@ class SdkForkTest extends TestCase
         }
     }
 
+    /**
+     * The reason this matters more than any other test here.
+     *
+     * Upstream guards the heartbeat with a consent check and then omits one
+     * on the deactivation route, which sends the *entire* insights payload
+     * -- URL, admin email, name, environment, plugin list. Somebody who
+     * clicked "No thanks" discloses all of it by filling in a dialog that
+     * asks a single question.
+     */
+    public function test_every_outbound_request_is_behind_a_consent_check(): void
+    {
+        $insights = static::sdk('Insights.php');
+
+        // Split on each call site and look backwards for a guard.
+        $parts = preg_split('/send_request\(/', $insights);
+        array_pop($parts);
+
+        $this->assertGreaterThan(0, count($parts), 'the SDK should send something');
+
+        foreach ($parts as $i => $before) {
+            // The refusal signal is the one exception, and is allowed to
+            // fire precisely because it identifies nobody: a project hash
+            // and a boolean. Without it the opt-in rate is unmeasurable.
+            if (str_contains(substr($insights, strlen(implode('send_request(', array_slice($parts, 0, $i + 1))), 120), 'tracking-skipped')) {
+                continue;
+            }
+
+            $window = substr($before, -1600);
+
+            $this->assertStringContainsString(
+                'tracking_allowed()',
+                $window,
+                "send_request() call #{$i} has no consent check within reach",
+            );
+        }
+    }
+
+    /**
+     * Asking somebody why they are leaving, then discarding the answer
+     * because they never consented, is worse than not asking.
+     */
+    public function test_the_deactivation_dialog_is_gated_on_consent(): void
+    {
+        $insights = static::sdk('Insights.php');
+
+        preg_match('/function deactivate_scripts\(\).*?
+    \}/s', $insights, $m);
+
+        $this->assertNotEmpty($m, 'deactivate_scripts should exist');
+        $this->assertStringContainsString('tracking_allowed()', $m[0]);
+    }
+
     #[DataProvider('sourceFiles')]
     public function test_it_parses(string $file): void
     {

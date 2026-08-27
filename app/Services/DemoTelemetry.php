@@ -304,7 +304,6 @@ class DemoTelemetry
                 'account_id' => $project->account_id,
                 'project_id' => $project->id,
                 'previously_skipped' => mt_rand() / mt_getrandmax() < 0.25,
-                'ip' => $this->ip(),
             ]);
         }
     }

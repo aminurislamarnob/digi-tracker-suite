@@ -11,7 +11,7 @@ class TrackingSkip extends Model
 {
     use BelongsToAccount, HasFactory;
 
-    protected $fillable = ['account_id', 'project_id', 'previously_skipped', 'ip'];
+    protected $fillable = ['account_id', 'project_id', 'previously_skipped'];
 
     protected function casts(): array
     {

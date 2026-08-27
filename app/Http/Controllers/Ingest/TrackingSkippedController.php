@@ -25,10 +25,11 @@ class TrackingSkippedController extends Controller
     {
         $project = $request->project();
 
-        $payload = RawPayload::create([
+        RawPayload::create([
             'account_id' => $project->account_id,
             'project_id' => $project->id,
             'route' => RawPayload::ROUTE_TRACKING_SKIPPED,
+
             /*
              * Only the flag, never $request->except('hash'). A misbehaving
              * or future client could append a URL or an email to a refusal,
@@ -36,8 +37,20 @@ class TrackingSkippedController extends Controller
              * person just declined to give.
              */
             'payload' => ['previously_skipped' => $request->previouslySkipped()],
-            'ip' => $request->ip(),
-            'user_agent' => $request->userAgent(),
+
+            /*
+             * No IP and no user agent, deliberately.
+             *
+             * This is the only route that fires without consent, which is
+             * defensible only because what it carries identifies nobody: a
+             * project hash and a boolean. An IP address is personal data,
+             * and the user agent carries md5(home_url) -- a stable site
+             * identifier. Recording either would turn a refusal into a
+             * record of who refused, which is the thing being refused.
+             */
+            'ip' => null,
+            'user_agent' => null,
+
             'processed_at' => now(),
         ]);
 
@@ -45,7 +58,6 @@ class TrackingSkippedController extends Controller
             'account_id' => $project->account_id,
             'project_id' => $project->id,
             'previously_skipped' => $request->previouslySkipped(),
-            'ip' => $payload->ip,
         ]);
 
         return response()->json(['success' => true]);

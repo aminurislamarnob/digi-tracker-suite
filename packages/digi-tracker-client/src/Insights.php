@@ -842,6 +842,22 @@ class Insights {
      * @return void
      */
     public function uninstall_reason_submission() {
+        /*
+         * Consent first, before anything else is read.
+         *
+         * This route sends the entire insights payload -- URL, admin email,
+         * name, environment, plugin list -- and upstream guards it with a
+         * nonce and a capability check but never asks whether the user
+         * agreed to be tracked. Filling in the deactivation dialog is not
+         * consent to disclose all of that; it is an answer to one question.
+         *
+         * A silent success on purpose: the person is mid-deactivation and a
+         * failure message about telemetry would be noise at best.
+         */
+        if ( ! $this->tracking_allowed() ) {
+            wp_send_json_success();
+        }
+
         if ( ! isset( $_POST['nonce'] ) ) {
             return;
         }
@@ -881,6 +897,15 @@ class Insights {
         global $pagenow;
 
         if ( 'plugins.php' !== $pagenow ) {
+            return;
+        }
+
+        /*
+         * No consent, no dialog. The submission handler would discard it
+         * anyway, and asking somebody why they are leaving -- then throwing
+         * the answer away -- is worse than not asking.
+         */
+        if ( ! $this->tracking_allowed() ) {
             return;
         }
 
@@ -1036,6 +1061,11 @@ class Insights {
      * @return void
      */
     public function theme_deactivated( $new_name, $new_theme, $old_theme ) {
+        // Consent, for the same reason as uninstall_reason_submission().
+        if ( ! $this->tracking_allowed() ) {
+            return;
+        }
+
         // Make sure this is our theme
         if ( $old_theme->get_template() === $this->client->slug ) {
             $this->client->send_request( $this->get_tracking_data(), 'deactivate' );
