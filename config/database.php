@@ -58,7 +58,32 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'strict' => true,
-            'engine' => null,
+
+            /*
+             * Never leave this to the server's default.
+             *
+             * The production host is MariaDB with default_storage_engine set
+             * to MyISAM, and MyISAM breaks this application in two ways that
+             * do not announce themselves:
+             *
+             *   - No row-level locking, and no SELECT ... FOR UPDATE. The
+             *     database queue driver uses exactly that to stop two workers
+             *     claiming the same job. The scheduler starts a fresh worker
+             *     every minute, so overlapping runs are ordinary, and losing
+             *     that lock means a second auto-responder to somebody who
+             *     deactivated once.
+             *   - No transactions, so DB::afterCommit() in SiteReconciler
+             *     fires immediately and a half-finished reconcile stays
+             *     half-finished.
+             *
+             * The migrations fail loudly only because utf8mb4 keys overrun
+             * MyISAM's 1000-byte limit, and that error is a gift: without it
+             * the schema would build and the damage would surface much later
+             * as duplicate emails nobody could reproduce -- MySQL 9 in
+             * development defaults to InnoDB, so none of this shows up there.
+             */
+            'engine' => env('DB_ENGINE', 'InnoDB'),
+
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
@@ -78,7 +103,7 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'strict' => true,
-            'engine' => null,
+            'engine' => env('DB_ENGINE', 'InnoDB'),
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],

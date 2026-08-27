@@ -53,6 +53,119 @@ returns 200 and quietly loses every heartbeat.
 
 ---
 
+## 0a. What the first real deploy found
+
+Written after deploying to `space.pluginizelab.com` on 2026-08-27. Where this section and the ones
+below disagree, this one is what the server actually does.
+
+| Fact | Value |
+|---|---|
+| Host | `server219.web-hosting.com`, SSH on port 21098, user `plugpxjv` |
+| **Account IP** | **198.54.116.227** — *not* what `server219.web-hosting.com` resolves to |
+| Panel | `space.pluginizelab.com`, docroot `/home/plugpxjv/space.pluginizelab.com` |
+| Application | `/home/plugpxjv/digi-tracker`, outside the web root |
+| PHP | 8.3.33, pinned per-docroot in `.htaccess` |
+| Database | MariaDB 11.4.12, **defaults to MyISAM** |
+| Composer | installed by hand at `~/bin/composer` |
+
+Four things were not as the rest of this runbook assumed.
+
+### PHP 8.3 is there, under a different name
+
+`/opt/cpanel/ea-php*` stops at 8.2, and the directory names lag their contents — `ea-php81` holds
+8.2.33. It reads like a hard ceiling and it is not one. CloudLinux's PHP Selector carries 8.0
+through 8.5 under `/opt/alt/php*`, and `/opt/alt/php83/usr/bin/php` is what everything here uses.
+
+Do **not** switch the account default: four other live sites share it. `selectorctl --domain` is the
+documented per-domain fix and it fails on this account — it cannot create the cagefs directory it
+needs, reports success anyway, and leaves the web serving 8.2. The version is therefore pinned in
+the document root's `.htaccess`, which `deploy/deploy.sh` writes on every deploy:
+
+```apache
+AddHandler application/x-httpd-alt-php83___lsphp .php
+```
+
+Verify it through the web, never from the shell — the CLI and the web SAPI answer differently here.
+
+### The document root cannot be moved, so the layout is split
+
+cPanel pins the subdomain to `~/space.pluginizelab.com` and offers no way to repoint it from a
+shell. So the application lives at `~/digi-tracker` — `.env`, `vendor/` and `storage/` outside the
+web root, which is the property that matters — and only `public/` is copied into the served
+directory, with the two `require` paths in `index.php` rewritten to absolute paths.
+
+Every deploy therefore has two halves, which is why `deploy/deploy.sh` exists. Doing one and
+forgetting the other leaves a front controller and an application disagreeing about what is running.
+
+One consequence is easy to miss: Blade's `@vite` reads the manifest from `public_path()`, which
+still points inside the application. `public/build/` is copied to *both* places for that reason.
+Without it every Filament page dies with "Vite manifest not found" while `/up` keeps answering 200,
+because the health check renders no view. **A green health check here is not a working dashboard.**
+
+### MariaDB defaults to MyISAM, which would have broken the queue silently
+
+Migrations fail outright with *"Specified key was too long; max key length is 1000 bytes"* — utf8mb4
+indexes overrunning MyISAM's limit. That error is a gift, because the real damage is elsewhere:
+
+- MyISAM has no row-level locking and no `SELECT ... FOR UPDATE`, which is exactly what the database
+  queue driver uses to stop two workers claiming the same job. The scheduler starts a worker every
+  minute, so overlapping runs are ordinary — and losing that lock means a second auto-responder to
+  somebody who deactivated once.
+- No transactions, so `DB::afterCommit()` in `SiteReconciler` fires immediately and a half-finished
+  reconcile stays half-finished.
+
+`config/database.php` now pins `'engine' => env('DB_ENGINE', 'InnoDB')`. Development runs MySQL 9,
+where InnoDB is the default, so none of this is reproducible locally. After migrating, check:
+
+```sh
+php artisan tinker --execute='dump(DB::select("SELECT TABLE_NAME FROM information_schema.TABLES
+  WHERE TABLE_SCHEMA = DATABASE() AND ENGINE <> \"InnoDB\""));'
+```
+
+### Cloudflare drops roughly half of all POST requests
+
+The most serious finding, and invisible to any check that only fetches a page.
+
+`pluginizelab.com` is proxied by Cloudflare. Measured on 2026-08-27, POSTs through the proxy were
+killed mid-connection (curl exit 35/55/56, no HTTP status) at a rate that would gut the product:
+
+| Request | Through Cloudflare | Straight to origin |
+|---|---|---|
+| `POST /track`, realistic payload | 10 / 25 arrived | 15 / 15 |
+| `POST /livewire-.../update` | 6 / 12 arrived | 12 / 12 |
+| `POST /deactivate` | — | 10 / 10 |
+| `GET /up`, `GET /admin` | fine | fine |
+
+The origin is clean at every path. It is the proxy hop that loses them.
+
+This breaks both halves of the application. The SDK posts fire-and-forget with
+`'blocking' => false`, so a dropped heartbeat is never retried and never logged — installs are
+silently under-counted, which is the single number the platform exists to report. And Filament is
+Livewire, so the dashboard loses half its interactions too.
+
+**The ingest hostname must be DNS-only — grey cloud, `A` to 198.54.116.227.** The plan already
+called for this (decision 11, "no CDN proxy"); this is the evidence for why. Note the accepted
+consequence: the hostname is welded to this host, and shipped plugins never migrate, so that record
+must stay valid indefinitely.
+
+`config/proxies.php` handles both arrangements. It trusts Cloudflare's published ranges rather than
+`'*'`, because the origin answers on its bare IP and a wildcard would let anyone bypassing the proxy
+forge a country and walk past the rate limiter by hand. On a grey-clouded hostname the peer is the
+real sender and is recorded directly. Both directions are pinned in
+`tests/Feature/Ingest/TrustedProxyTest.php`.
+
+Test POSTs, not GETs, after any DNS change:
+
+```sh
+for i in $(seq 1 20); do
+  curl -s -o /dev/null -w '%{http_code} ' -X POST \
+    -d 'hash=unknown&url=https%3A%2F%2Fexample.com' https://telemetry.pluginizelab.com/track
+done; echo
+# Want twenty 404s ("Unknown project" -- it reached Laravel). Any 000 is a dropped heartbeat.
+```
+
+---
+
 ## 0. What you need access to
 
 Nothing here should be shared with anyone, including in a chat window. Everything below is either
@@ -329,25 +442,33 @@ php artisan schedule:list
 
 ## 5. Create the first account
 
-There is no public sign-up. Accounts are created by hand until the success test decides whether this
-becomes a product.
+There is no public sign-up, and no registration page. Membership of an account is what grants panel
+access, so until this has run there is no way in at all — and `make:filament-user` is not a
+substitute, because it produces a user with no tenant whom `canAccessPanel()` correctly turns away.
+
+```sh
+php artisan telemetry:provision-account \
+    --account="PluginizeLab" --slug=pluginizelab \
+    --name="Your Name" --email=you@example.com
+```
+
+It prompts for the password twice rather than taking it as an option, so the credential never
+reaches shell history, a process list, or a deploy log. Minimum twelve characters: this is the one
+login that can read every tenant's telemetry.
+
+Running it again with a new account name adds an existing person to a second account and leaves
+their password untouched.
+
+Then create the first project:
 
 ```sh
 php artisan tinker
 ```
 
 ```php
-use App\Models\{Account, User, Project};
+use App\Models\{Account, Project};
 
-$account = Account::create(['name' => 'PluginizeLab', 'slug' => 'pluginizelab']);
-
-$user = User::create([
-    'name' => 'Your Name',
-    'email' => 'you@example.com',
-    'password' => 'a-long-random-password',   // hashed by the model cast
-]);
-
-$user->accounts()->attach($account, ['role' => 'owner']);
+$account = Account::firstOrFail();
 
 $project = Project::create([
     'account_id' => $account->id,
@@ -358,7 +479,8 @@ $project = Project::create([
 echo $project->hash;   // this is what goes in the plugin
 ```
 
-The panel is at `https://telemetry.pluginizelab.com/admin`.
+The panel is at `https://space.pluginizelab.com/admin/pluginizelab` — the account slug is part of
+the path, because the account is Filament's tenant.
 
 `Project::created()` seeds the seven standard deactivation reasons automatically.
 

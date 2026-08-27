@@ -21,6 +21,23 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'account' => SetCurrentAccount::class,
         ]);
+
+        /*
+         * Behind Cloudflare the TCP peer is an edge, not the site that sent
+         * the heartbeat. Recovering the real address is what keeps the
+         * per-IP throttle meaningful and the country column honest; see
+         * config/proxies.php for why the list is narrow rather than '*'.
+         */
+        // Required rather than read through config(): this closure runs
+        // while the application is still being built, before the config
+        // repository is bound.
+        $middleware->trustProxies(
+            at: (require __DIR__.'/../config/proxies.php')['proxies'],
+            headers: Request::HEADER_X_FORWARDED_FOR
+                | Request::HEADER_X_FORWARDED_HOST
+                | Request::HEADER_X_FORWARDED_PORT
+                | Request::HEADER_X_FORWARDED_PROTO,
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         /*
