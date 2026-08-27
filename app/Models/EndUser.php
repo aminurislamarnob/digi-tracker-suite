@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToAccount;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Hash;
 
@@ -40,6 +41,11 @@ class EndUser extends Model
     public static function indexFor(string $email): string
     {
         return hash_hmac('sha256', mb_strtolower(trim($email)), config('app.key'));
+    }
+
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
     }
 
     public function sites(): HasMany

@@ -4,17 +4,22 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Models\Contracts\HasTenants;
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Collection;
 
 #[Fillable(['name', 'email', 'password', 'current_account_id'])]
 #[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable
+class User extends Authenticatable implements FilamentUser, HasTenants
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
@@ -43,27 +48,32 @@ class User extends Authenticatable
     }
 
     /**
-     * The account this user is looking at, falling back to their first
-     * membership. Never trust a stale current_account_id on its own -- a
-     * user removed from an account must stop seeing it immediately, which
-     * is why membership is re-checked here rather than at assignment time.
+     * The panel is invitation-only, so access is membership of at least one
+     * account rather than a flag on the user. A user with no memberships has
+     * nothing to look at, and Filament renders that as a refusal rather than
+     * as an empty dashboard.
      */
-    public function resolveCurrentAccount(): ?Account
+    public function canAccessPanel(Panel $panel): bool
     {
-        $accounts = $this->accounts()->orderBy('accounts.name')->get();
-
-        return $accounts->firstWhere('id', $this->current_account_id) ?? $accounts->first();
+        return $this->accounts()->exists();
     }
 
-    public function belongsToAccount(Account $account): bool
+    /**
+     * @return Collection<int, Account>
+     */
+    public function getTenants(Panel $panel): Collection
     {
-        return $this->accounts()->whereKey($account->getKey())->exists();
+        return $this->accounts()->orderBy('accounts.name')->get();
     }
 
-    public function switchTo(Account $account): void
+    /**
+     * Checked on every request Filament serves, so removing somebody from an
+     * account locks them out immediately rather than at their next login.
+     */
+    public function canAccessTenant(Model $tenant): bool
     {
-        if ($this->belongsToAccount($account)) {
-            $this->forceFill(['current_account_id' => $account->id])->save();
-        }
+        return $tenant instanceof Account
+            && ! $tenant->is_suspended
+            && $this->accounts()->whereKey($tenant->getKey())->exists();
     }
 }

@@ -56,17 +56,3 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
-
-## Dashboard UI
-
-The panel is built on the [TailAdmin Laravel](https://github.com/TailAdmin/tailadmin-laravel)
-template (MIT), vendored into `resources/` rather than pulled as a dependency — it is a set of
-Blade markup and Tailwind tokens, not a package, so there is no upstream to track.
-
-What came from the template: `resources/css/app.css` (the whole design token set),
-`resources/views/layouts/*`, `resources/views/components/{ui,common,form}/*`, and
-`app/Helpers/MenuHelper.php`. Everything under `resources/views/pages/` and
-`resources/views/partials/` is ours.
-
-`MenuHelper::getIconSvg()` is upstream's icon set and is left untouched; the nav data above it was
-replaced. When adding a sidebar item, pick an icon name that already exists in that map.

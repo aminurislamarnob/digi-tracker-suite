@@ -2,20 +2,24 @@
 
 namespace Tests\Feature\Panel;
 
+use App\Filament\Resources\Projects\ProjectResource;
+use App\Filament\Resources\Sites\SiteResource;
 use App\Models\Account;
 use App\Models\Project;
+use App\Models\Site;
 use App\Models\User;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\PostsTelemetry;
 use Tests\TestCase;
 
 /**
- * The tenancy boundary as the dashboard sees it.
+ * The tenancy boundary as the panel sees it.
  *
- * The global scope only bites when an account is in context, and route
- * model binding runs before route middleware -- which is exactly the seam
- * where a panel leaks another account's data. These tests exist to hold
- * that seam shut.
+ * Two mechanisms have to agree: Filament scopes the queries it builds
+ * through the tenant relationship, and our own global scope catches
+ * anything queried directly. These tests exist because a leak needs only
+ * one of the two to be missing.
  */
 class PanelIsolationTest extends TestCase
 {
@@ -35,62 +39,92 @@ class PanelIsolationTest extends TestCase
     {
         parent::setUp();
 
-        $this->acme = Account::factory()->create(['name' => 'Acme']);
-        $this->globex = Account::factory()->create(['name' => 'Globex']);
+        $this->acme = Account::factory()->create(['name' => 'Acme', 'slug' => 'acme']);
+        $this->globex = Account::factory()->create(['name' => 'Globex', 'slug' => 'globex']);
 
-        $this->acmeProject = Project::factory()->for($this->acme)->create(['slug' => 'acme-plugin']);
-        $this->globexProject = Project::factory()->for($this->globex)->create(['slug' => 'globex-plugin']);
+        $this->acmeProject = Project::factory()->for($this->acme)->create([
+            'name' => 'Acme Plugin', 'slug' => 'acme-plugin',
+        ]);
+        $this->globexProject = Project::factory()->for($this->globex)->create([
+            'name' => 'Globex Plugin', 'slug' => 'globex-plugin',
+        ]);
 
         $this->acmeUser = User::factory()->create();
         $this->acmeUser->accounts()->attach($this->acme, ['role' => 'owner']);
     }
 
-    public function test_another_accounts_project_is_not_reachable_by_url(): void
+    /**
+     * Filament answers 404 rather than 403, which is the better of the two:
+     * a 403 would confirm the account exists.
+     */
+    public function test_an_account_you_do_not_belong_to_is_refused(): void
     {
         $this->actingAs($this->acmeUser)
-            ->get(route('projects.overview', $this->globexProject))
+            ->get(ProjectResource::getUrl('index', tenant: $this->globex))
             ->assertNotFound();
+    }
+
+    /**
+     * Membership is re-checked on every request, so removing somebody from
+     * an account locks them out immediately rather than at next login.
+     */
+    public function test_membership_is_rechecked_per_request(): void
+    {
+        $this->assertTrue($this->acmeUser->canAccessTenant($this->acme));
+        $this->assertFalse($this->acmeUser->canAccessTenant($this->globex));
+
+        $this->acmeUser->accounts()->detach($this->acme);
+
+        $this->assertFalse($this->acmeUser->fresh()->canAccessTenant($this->acme));
+    }
+
+    public function test_a_suspended_account_is_refused(): void
+    {
+        $this->acme->update(['is_suspended' => true]);
+
+        $this->assertFalse($this->acmeUser->canAccessTenant($this->acme));
     }
 
     public function test_the_project_list_shows_only_our_own(): void
     {
-        $this->actingAs($this->acmeUser)->get('/')
+        $this->actingAs($this->acmeUser)
+            ->get(ProjectResource::getUrl('index', tenant: $this->acme))
             ->assertOk()
-            ->assertSee($this->acmeProject->name)
-            ->assertDontSee($this->globexProject->name);
+            ->assertSee('Acme Plugin')
+            ->assertDontSee('Globex Plugin');
     }
 
-    public function test_the_site_list_shows_only_our_own(): void
+    public function test_the_site_table_shows_only_our_own(): void
     {
         $this->track($this->acmeProject, ['url' => 'https://acme-customer.com', 'admin_email' => 'a@acme.com']);
         $this->track($this->globexProject, ['url' => 'https://globex-customer.com', 'admin_email' => 'b@globex.com']);
 
-        $this->actingAs($this->acmeUser)->get(route('projects.sites', $this->acmeProject))
+        $this->actingAs($this->acmeUser)
+            ->get(SiteResource::getUrl('index', tenant: $this->acme))
             ->assertOk()
             ->assertSee('acme-customer.com')
             ->assertDontSee('globex-customer.com');
     }
 
     /**
-     * A user removed from an account must stop seeing it, whatever their
-     * stored current_account_id still says.
+     * Guessing a record id must not work either. Filament scopes the query
+     * that resolves the record, so another account's site is simply absent.
      */
-    public function test_a_stale_current_account_is_not_trusted(): void
+    public function test_another_accounts_site_is_not_reachable_by_id(): void
     {
-        $this->acmeUser->forceFill(['current_account_id' => $this->globex->id])->save();
+        $this->track($this->globexProject, ['url' => 'https://globex-customer.com', 'admin_email' => 'b@globex.com']);
 
-        $this->actingAs($this->acmeUser)->get('/')
-            ->assertOk()
-            ->assertSee($this->acmeProject->name)
-            ->assertDontSee($this->globexProject->name);
+        $globexSite = Site::acrossAccounts()->sole();
+
+        $this->actingAs($this->acmeUser)
+            ->get(SiteResource::getUrl('view', ['record' => $globexSite->id], tenant: $this->acme))
+            ->assertNotFound();
     }
 
-    public function test_switching_to_an_account_you_do_not_belong_to_does_nothing(): void
+    protected function tearDown(): void
     {
-        $this->actingAs($this->acmeUser)
-            ->post(route('accounts.switch', $this->globex))
-            ->assertRedirect();
+        Filament::setTenant(null);
 
-        $this->assertNotSame($this->globex->id, $this->acmeUser->fresh()->current_account_id);
+        parent::tearDown();
     }
 }
