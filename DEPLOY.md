@@ -442,9 +442,20 @@ php artisan schedule:list
 
 ## 5. Create the first account
 
-There is no public sign-up, and no registration page. Membership of an account is what grants panel
-access, so until this has run there is no way in at all — and `make:filament-user` is not a
-substitute, because it produces a user with no tenant whom `canAccessPanel()` correctly turns away.
+Membership of an account is what grants panel access, so `make:filament-user` is not a substitute:
+it produces a user with no tenant whom `canAccessPanel()` correctly turns away.
+
+**There is now a registration page, and it is open by default.** `/admin/register` creates a user
+*and* an organisation in one form, which means anyone who reaches the host can create an account
+inside the platform. That is right for a product and wrong for an internal tool, and this is
+currently the second one. Decide before the first deploy carrying it:
+
+```sh
+# In ~/digi-tracker/.env — sign-in and password reset stay available.
+TELEMETRY_REGISTRATION=false
+```
+
+With registration closed, the command below is again the only door in.
 
 ```sh
 php artisan telemetry:provision-account \

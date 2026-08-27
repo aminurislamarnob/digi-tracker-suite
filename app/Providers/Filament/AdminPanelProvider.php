@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Pages\Auth\Register;
 use App\Http\Middleware\SetCurrentAccount;
 use App\Models\Account;
 use Filament\Http\Middleware\Authenticate;
@@ -27,7 +28,30 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
+
+            /*
+             * Sign in, sign up, and the way back in after forgetting.
+             *
+             * Filament ships all three; what is ours is the registration
+             * page, which has to create an account alongside the user --
+             * see App\Filament\Pages\Auth\Register for why signing up
+             * without one lands somebody straight on a refusal.
+             *
+             * Registration is behind a config flag because it creates a
+             * tenant, so leaving it open on a public host lets a stranger
+             * create an organisation inside the platform. Password reset is
+             * not gated: locking an existing user out of their own account
+             * has no upside.
+             *
+             * Not here, and deliberately not half-wired: email verification.
+             * It needs User to implement MustVerifyEmail and a mailer that
+             * actually reaches people. With MAIL_MAILER=log it would lock
+             * every new user out of the panel they just signed up for, and a
+             * switch that cannot be turned on is worse than no switch.
+             */
             ->login()
+            ->passwordReset()
+            ->registration(config('telemetry.auth.registration') ? Register::class : null)
 
             /*
              * brandName stays set even though a logo is shown: Filament uses
@@ -85,9 +109,11 @@ class AdminPanelProvider extends PanelProvider
              * slug rather than the id keeps sequential ids out of URLs, where
              * they would leak how many accounts exist.
              *
-             * There is deliberately no tenant registration page: accounts are
-             * created by hand until the success test decides whether this
-             * becomes a product.
+             * There is no separate tenant-registration page: an account is
+             * created as part of signing up, in one form, because a user
+             * without one cannot pass canAccessPanel() and would be shown
+             * the door on the request that created them. Joining an existing
+             * account stays an invitation its owner issues.
              */
             ->tenant(Account::class, slugAttribute: 'slug', ownershipRelationship: 'account')
 

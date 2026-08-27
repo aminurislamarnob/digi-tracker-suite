@@ -63,4 +63,23 @@ return [
         'database' => env('GEOIP_DATABASE'),
     ],
 
+    'auth' => [
+
+        /*
+         * Whether anybody may create an account.
+         *
+         * Registration creates a tenant, not just a login, so an open form
+         * on a public host means a stranger can create an organisation
+         * inside the platform. That is correct for a product and wrong for
+         * an internal tool, and this application is currently the second
+         * one -- the plan's own decision was that accounts are created by
+         * hand until the success test says otherwise.
+         *
+         * Left on so the feature is usable; close it with one line in .env
+         * the moment the sign-up link is not wanted in public.
+         */
+        'registration' => filter_var(env('TELEMETRY_REGISTRATION', true), FILTER_VALIDATE_BOOL),
+
+    ],
+
 ];
