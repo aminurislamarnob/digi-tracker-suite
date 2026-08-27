@@ -66,6 +66,13 @@ wordpress.org Guideline 7 prohibits phoning home without explicit consent. The o
 makes this plugin compliant; both lines above defeat it and are grounds for removal from the
 directory.
 
+You will find `send_tracking_data( true )` inside the SDK itself, in `activate_plugin()`. That is
+safe, and not a precedent: the `$override` flag skips the *consent* check, and `activate_plugin()`
+performs its own consent check first, returning early for anyone who has not opted in. All the flag
+does there is let a reactivating site send immediately rather than waiting out the once-a-week
+limit. Called from your own code, with no such guard in front of it, it sends data from people who
+declined.
+
 ## Hooks
 
 | Hook | Purpose |
