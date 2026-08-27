@@ -43,3 +43,13 @@ Schedule::command('telemetry:classify-sites')->dailyAt('02:00')->withoutOverlapp
 Schedule::command('telemetry:build-daily-stats')->dailyAt('02:15')->withoutOverlapping();
 
 Schedule::command('telemetry:detect-anomalies')->hourly()->withoutOverlapping();
+
+/*
+ * After the rollup, not before: the digest reads daily_stats, and a digest
+ * confidently reporting last night's numbers because it ran first is worse
+ * than one that arrives an hour later.
+ *
+ * Monday morning, because a weekly summary read on a Friday afternoon is a
+ * weekly summary nobody acts on.
+ */
+Schedule::command('telemetry:send-digests')->weeklyOn(1, '08:00')->withoutOverlapping();

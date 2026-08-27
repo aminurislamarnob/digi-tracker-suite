@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Contracts\GeoLocator;
+use App\Jobs\SendDeactivationEmails;
 use App\Models\Deactivation;
 use App\Models\EndUser;
 use App\Models\ProjectMetaField;
@@ -360,6 +361,14 @@ class SiteReconciler
             'status' => Site::STATUS_DEACTIVATED,
             'deactivated_at' => now(),
         ]);
+
+        /*
+         * Queued after the transaction commits, not inside it. Dispatching
+         * within would hand the job a row the worker cannot see yet if it
+         * picks it up before the commit lands -- and a mail failure must
+         * never roll back the churn event that caused it.
+         */
+        DB::afterCommit(fn () => SendDeactivationEmails::dispatch($deactivation->id));
 
         return $deactivation;
     }

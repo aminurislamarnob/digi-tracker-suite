@@ -63,6 +63,60 @@ class ProjectResource extends Resource
             ]),
 
             /*
+             * Mail leaves from our authenticated domain, because a platform
+             * cannot inherit each customer's DKIM. What is configurable is
+             * what the recipient sees -- and where a reply lands.
+             */
+            Section::make('Email')
+                ->description('Every send is off until switched on here. Nothing is sent for demo projects.')
+                ->hiddenOn('create')
+                ->columns(2)
+                ->schema([
+                    TextInput::make('from_name')
+                        ->label('From name')
+                        ->maxLength(255)
+                        ->placeholder(fn ($record) => $record?->name)
+                        ->helperText('Shown as the sender. Defaults to the project name.'),
+
+                    TextInput::make('reply_to')
+                        ->label('Reply-to')
+                        ->email()
+                        ->maxLength(255)
+                        ->helperText('Where a reply from a user lands.'),
+
+                    TextInput::make('support_email')
+                        ->label('Support inbox')
+                        ->email()
+                        ->maxLength(255)
+                        ->helperText('Where forwarded deactivations go.'),
+
+                    Textarea::make('email_footer')
+                        ->rows(2)
+                        ->maxLength(500)
+                        ->columnSpanFull()
+                        ->helperText('Appended to messages sent to your users.'),
+
+                    Toggle::make('replies_to_deactivations')
+                        ->label('Reply to feedback')
+                        /*
+                         * The restriction is the reason this is defensible.
+                         * Replying to feedback somebody chose to write is
+                         * expected; mailing everyone who dismissed a dialog
+                         * would treat telemetry consent as permission to
+                         * correspond, which it is not.
+                         */
+                        ->helperText('Only to people who actually wrote a comment, once each, ever.'),
+
+                    Toggle::make('forwards_deactivations')
+                        ->label('Forward deactivations')
+                        ->helperText('A copy of every deactivation to the support inbox.'),
+
+                    Toggle::make('sends_weekly_digest')
+                        ->label('Weekly digest')
+                        ->helperText('Monday mornings, to everyone on the account.'),
+                ]),
+
+            /*
              * Shown, never editable. The hash is the routing key baked into
              * every installed copy of the plugin: changing it would orphan
              * every site already reporting, permanently and silently.

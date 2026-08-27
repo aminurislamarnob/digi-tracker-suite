@@ -15,11 +15,19 @@ class Project extends Model
     protected $fillable = [
         'account_id', 'hash', 'name', 'slug', 'type',
         'homepage_url', 'demo_url', 'description', 'icon_path', 'is_active', 'is_demo',
+        'from_name', 'reply_to', 'support_email', 'email_footer',
+        'replies_to_deactivations', 'forwards_deactivations', 'sends_weekly_digest',
     ];
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean', 'is_demo' => 'boolean'];
+        return [
+            'is_active' => 'boolean',
+            'is_demo' => 'boolean',
+            'replies_to_deactivations' => 'boolean',
+            'forwards_deactivations' => 'boolean',
+            'sends_weekly_digest' => 'boolean',
+        ];
     }
 
     /**

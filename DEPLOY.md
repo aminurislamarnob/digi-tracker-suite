@@ -201,6 +201,7 @@ That single entry drives everything:
 | `telemetry:classify-sites` | 02:00 | Demotes sites silent for 30 days to inactive. |
 | `telemetry:build-daily-stats` | 02:15 | The nightly rollup every chart reads. |
 | `telemetry:detect-anomalies` | hourly | Logs traffic that has stopped looking like WordPress. |
+| `telemetry:send-digests` | Mondays 08:00 | Weekly summary to each opted-in project's team. Runs after the rollup, not before. |
 
 Everything is idempotent and recomputed from history, so a missed run costs a late number and
 nothing else. Re-running a day never double-counts.
@@ -357,6 +358,52 @@ A missing or corrupt database is handled: the locator marks itself unavailable a
 rather than retrying on every row.
 
 ---
+
+## 8a. Email (optional)
+
+Nothing is sent until a project switches it on, and nothing is ever sent for a demo project.
+
+```ini
+MAIL_MAILER=postmark
+POSTMARK_TOKEN=your-server-token
+MAIL_FROM_ADDRESS="telemetry@pluginizelab.com"
+MAIL_FROM_NAME="Digi Tracker"
+```
+
+Then `php artisan optimize:clear && php artisan optimize`.
+
+**DKIM and Return-Path must be set up in Postmark for the sending domain**, or the auto-responder
+lands in spam and the whole surface is worse than not having it. Mail leaves from *our* domain
+wearing the author's name in `From` with their address in `Reply-To` — a platform cannot inherit
+each customer's DKIM, and forging their domain without it fails DMARC.
+
+Per-project settings live under **Project → Edit → Email**: from name, reply-to, support inbox,
+footer, and three independent switches. All default to off.
+
+### The one rule worth restating
+
+Telemetry consent is consent to be **measured**, not consent to be **written to**. That is why the
+auto-responder only ever goes to somebody who actually typed a comment, once per person per project,
+ever. Mailing everyone who dismissed the dialog would use telemetry opt-in as cover for
+correspondence nobody agreed to — the exact pattern the plan objects to in Appsero's
+telemetry-to-Mailchimp flow.
+
+### Suppression
+
+`email_suppressions` is keyed by blind index, never plaintext — its whole purpose is that we stopped
+writing to those people, so it is the last table that should hold a list of live addresses.
+
+Unsubscribe needs no login and no confirmation click, and honours RFC 8058 one-click POST. A link
+that makes somebody work for it is a link that gets the spam button instead.
+
+To suppress by hand:
+
+```sh
+php artisan tinker --execute='app(App\Services\Mailer::class)->suppress(1, "person@example.com", "manual");'
+```
+
+Bounce and complaint webhooks from Postmark are **not** wired up yet. Until they are, a hard bounce
+will be retried on the next occasion rather than suppressed.
 
 ## 9. Operating it
 
