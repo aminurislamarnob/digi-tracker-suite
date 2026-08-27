@@ -7,6 +7,7 @@ use App\Filament\Widgets\ProjectDistributionChart;
 use App\Filament\Widgets\ProjectHeadlineStats;
 use App\Filament\Widgets\ProjectInstallsChart;
 use App\Models\DailyStat;
+use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
@@ -24,6 +25,18 @@ use Filament\Support\Icons\Heroicon;
 class ViewProject extends ViewRecord
 {
     protected static string $resource = ProjectResource::class;
+
+    /*
+     * "Overview", not Filament's default "View". It is the second tab now
+     * that Repository leads, and a tab reading "View" beside "Repository"
+     * and "Reports" names an action rather than a subject -- it gives no
+     * clue that this is the telemetry half.
+     */
+    protected static ?string $title = 'Overview';
+
+    protected static ?string $navigationLabel = 'Overview';
+
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChartPie;
 
     public function getSubheading(): ?string
     {

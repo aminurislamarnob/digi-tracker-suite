@@ -2,3 +2,31 @@
 
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
+@source '../../../../resources/views/vendor/filament-panels/**/*';
+
+/*
+ * Breadcrumbs on the right.
+ *
+ * The markup change lives in
+ * resources/views/vendor/filament-panels/components/header/index.blade.php;
+ * these are the two rules that go with it.
+ */
+
+.fi-header {
+    /*
+     * Top, not centre. The right column now holds breadcrumbs as well as
+     * actions, and vertically centring that against a heading with a
+     * subheading under it leaves the breadcrumbs floating at mid-height,
+     * level with nothing.
+     */
+    @apply sm:items-start;
+}
+
+.fi-header-end-ctn {
+    @apply flex shrink-0 flex-col items-start gap-2 sm:items-end;
+}
+
+.fi-header .fi-breadcrumbs {
+    /* Upstream spaces them off the heading below; the flex gap does that now. */
+    @apply mb-0;
+}

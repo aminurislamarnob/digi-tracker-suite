@@ -54,7 +54,21 @@ class WordPressOrg
     {
         $response = $this->request()->get(self::INFO, [
             'action' => 'plugin_information',
-            'request' => ['slug' => $slug],
+            'request' => [
+                'slug' => $slug,
+                /*
+                 * `downloaded` is not in the default field set, and its
+                 * absence does not look like an absence: the key simply is
+                 * not there, which reads downstream as zero. That is how a
+                 * plugin with 4,463 lifetime downloads came to display 0.
+                 *
+                 * It is also the only source for a true all-time figure --
+                 * the daily stats endpoint caps at 730 days (see
+                 * dailyDownloads), so summing the series undercounts every
+                 * plugin older than two years.
+                 */
+                'fields' => ['downloaded' => true, 'active_installs' => true],
+            ],
         ]);
 
         if (! $response->successful()) {
@@ -76,18 +90,109 @@ class WordPressOrg
     }
 
     /**
+     * The furthest back the daily stats endpoint will go.
+     *
+     * Not a policy of ours -- ask for 731 and the response silently
+     * collapses to its 180-day default rather than erroring, so a caller
+     * reaching for more history quietly gets a quarter of what it already
+     * had. Clamped here so that cannot happen.
+     */
+    public const MAX_DOWNLOAD_DAYS = 730;
+
+    /**
      * Daily download counts, oldest first.
      *
      * The tail is provisional: wordpress.org revises recent days as mirrors
      * report in, which is why callers upsert rather than insert.
      *
+     * Two quirks of the endpoint are worth stating, because both produce
+     * wrong answers that look entirely reasonable:
+     *
+     * - `limit=N` returns N-1 days ending *yesterday*. The day in progress
+     *   is excluded from every response except `limit=1`, which returns
+     *   that day and nothing else. So today has to be asked for separately
+     *   or it is simply absent, and a dashboard shows a dash for the number
+     *   people look at first.
+     * - `limit` above 730 is not an error; it is ignored, and the default
+     *   180 comes back instead.
+     *
      * @return array<string, int> date (Y-m-d) => downloads
      */
-    public function dailyDownloads(string $slug, int $days = 730): array
+    public function dailyDownloads(string $slug, int $days = self::MAX_DOWNLOAD_DAYS): array
+    {
+        $days = max(1, min($days, self::MAX_DOWNLOAD_DAYS));
+
+        $counts = $this->downloadWindow($slug, $days);
+
+        /*
+         * Today, fetched on its own because no other request carries it.
+         * Merged last so it wins: the window never contains today, but a
+         * previous run's row for it may already be in the caller's table.
+         */
+        if ($days > 1) {
+            $counts += $this->downloadWindow($slug, 1);
+        }
+
+        ksort($counts);
+
+        return $counts;
+    }
+
+    /**
+     * The four figures wordpress.org's own advanced page prints.
+     *
+     * `historical_summary=1` is undocumented but it is what the plugin
+     * directory itself calls -- wporg-plugins-2024/js/stats.js -- so it is
+     * the only source that agrees with the page by construction. Everything
+     * else is a reconstruction: all_time reaches back past the 730-day
+     * ceiling on the daily series, and last_week is wordpress.org's own
+     * window, which is seven complete days plus the day in progress.
+     *
+     * Worth using rather than deriving even where a derivation is possible,
+     * because this is the number people check us against. A figure of ours
+     * that is defensible but a day out from the page reads as a bug in us
+     * every single time anyone looks.
+     *
+     * @return array{today: ?int, yesterday: ?int, last_week: ?int, all_time: ?int}|null
+     *                                                                                   null when the repository could not be reached
+     */
+    public function downloadSummary(string $slug): ?array
     {
         $response = $this->request()->get(self::STATS.'downloads.php', [
             'slug' => $slug,
-            'limit' => $days,
+            'historical_summary' => 1,
+        ]);
+
+        if (! $response->successful()) {
+            return $this->miss('download_summary', $slug, $response->status());
+        }
+
+        $data = $response->json();
+
+        if (! is_array($data) || ! array_key_exists('all_time', $data)) {
+            return $this->miss('download_summary', $slug, 'payload had no summary');
+        }
+
+        // Every figure arrives as a string, and an unknown plugin answers
+        // with nulls rather than an error, so each is cast on its own.
+        return [
+            'today' => isset($data['today']) && is_numeric($data['today']) ? (int) $data['today'] : null,
+            'yesterday' => isset($data['yesterday']) && is_numeric($data['yesterday']) ? (int) $data['yesterday'] : null,
+            'last_week' => isset($data['last_week']) && is_numeric($data['last_week']) ? (int) $data['last_week'] : null,
+            'all_time' => isset($data['all_time']) && is_numeric($data['all_time']) ? (int) $data['all_time'] : null,
+        ];
+    }
+
+    /**
+     * One call to the downloads endpoint, parsed.
+     *
+     * @return array<string, int>
+     */
+    protected function downloadWindow(string $slug, int $limit): array
+    {
+        $response = $this->request()->get(self::STATS.'downloads.php', [
+            'slug' => $slug,
+            'limit' => $limit,
         ]);
 
         if (! $response->successful()) {

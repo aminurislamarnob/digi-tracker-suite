@@ -17,6 +17,7 @@ class RepoSnapshot extends Model
     protected $fillable = [
         'account_id', 'project_id', 'captured_on',
         'active_installs', 'downloaded',
+        'downloads_today', 'downloads_yesterday', 'downloads_last_week',
         'rating', 'num_ratings', 'ratings',
         'support_threads', 'support_threads_resolved',
         'version', 'requires', 'requires_php', 'tested',

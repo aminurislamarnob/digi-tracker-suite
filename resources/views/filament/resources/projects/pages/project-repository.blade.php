@@ -20,43 +20,88 @@
             </p>
         </x-filament::section>
     @else
-        {{-- The headline trio. The middle number is the point of this page. --}}
-        <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
-            <x-filament::section>
-                <x-slot name="heading">Public active installs</x-slot>
-                <p class="text-3xl font-semibold tabular-nums text-gray-950 dark:text-white">
+        {{--
+            The public record, four numbers wide. Every one of them is
+            wordpress.org's own measurement -- nothing here comes from
+            telemetry, which is why this is the first thing on the page.
+
+            Each card is label, figure, caption. The caption is where the
+            caveat goes, because a figure this large gets quoted and the
+            caveat has to travel with it.
+        --}}
+        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+            <x-filament::section class="text-center">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Downloads</p>
+                <p class="mt-1 text-4xl font-bold tabular-nums text-gray-950 dark:text-white">
+                    {{ $headline['downloads'] !== null ? number_format($headline['downloads']) : '—' }}
+                </p>
+                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                    {{--
+                        No "yesterday N" here any more: the cards above the
+                        chart carry today, yesterday and the week, and the
+                        same number printed twice on one screen invites
+                        someone to wonder which one is right.
+                    --}}
+                    since the plugin was published
+                </p>
+            </x-filament::section>
+
+            <x-filament::section class="text-center">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Installations</p>
+                <p class="mt-1 text-4xl font-bold tabular-nums text-gray-950 dark:text-white">
                     {{ $headline['publicInstalls'] !== null ? number_format($headline['publicInstalls']) : '—' }}
                 </p>
                 <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
                     {{-- Said plainly, because two of these subtracted is not growth. --}}
-                    wordpress.org publishes this rounded to a bucket, never exactly.
+                    rounded to a bucket, never exact
                 </p>
             </x-filament::section>
 
-            <x-filament::section>
-                <x-slot name="heading">Tracked installs</x-slot>
-                <p class="text-3xl font-semibold tabular-nums text-gray-950 dark:text-white">
-                    {{ $headline['tracked'] !== null ? number_format($headline['tracked']) : '—' }}
-                </p>
-                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                    Sites that opted in and reported within 30 days. Claimed, not proven.
-                </p>
-            </x-filament::section>
-
-            <x-filament::section>
-                <x-slot name="heading">Opt-in rate</x-slot>
-                @if ($headline['optInRate'] === null)
-                    <p class="text-3xl font-semibold text-gray-400 dark:text-gray-500">—</p>
+            <x-filament::section class="text-center">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Rating</p>
+                @if ($headline['rating'] === null || ! $headline['numRatings'])
+                    <p class="mt-1 text-4xl font-bold text-gray-400 dark:text-gray-500">—</p>
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">no ratings yet</p>
+                @else
+                    <p class="mt-1 text-4xl font-bold tabular-nums text-gray-950 dark:text-white">
+                        {{ $headline['rating'] }}%
+                    </p>
                     <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                        {{-- Never shown as 0%: that would claim nobody opted in. --}}
-                        No public figure yet, so there is nothing to divide by.
+                        from {{ number_format($headline['numRatings']) }}
+                        {{ Str::plural('rating', $headline['numRatings']) }}
+                        @if ($headline['numRatings'] < 5)
+                            {{-- A percentage drawn from a handful of people is not a score. --}}
+                            <span class="block text-amber-600 dark:text-amber-400">too few to read as a score</span>
+                        @endif
+                    </p>
+                @endif
+            </x-filament::section>
+
+            <x-filament::section class="text-center">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Conversion</p>
+                @if ($headline['conversion'] === null)
+                    {{-- Never 0%: with either half missing there is no ratio. --}}
+                    <p class="mt-1 text-4xl font-bold text-gray-400 dark:text-gray-500">—</p>
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                        needs both a download count and an install figure
                     </p>
                 @else
-                    <p class="text-3xl font-semibold tabular-nums text-primary-600 dark:text-primary-400">
-                        {{ $headline['optInRate'] }}%
+                    <p @class([
+                        'mt-1 text-4xl font-bold tabular-nums',
+                        'text-success-600 dark:text-success-400' => $headline['conversionColour'] === 'success',
+                        'text-warning-600 dark:text-warning-400' => $headline['conversionColour'] === 'warning',
+                        'text-danger-600 dark:text-danger-400' => $headline['conversionColour'] === 'danger',
+                    ])>
+                        {{ number_format($headline['conversion'], 2) }}%
                     </p>
                     <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                        Of the public figure. An estimate against a rounded number.
+                        @if ($headline['conversionLabel'])
+                            {{-- Our threshold, not wordpress.org's. Said so. --}}
+                            ({{ $headline['conversionLabel'] }}) by our own rule of thumb
+                        @endif
+                        <span class="block text-gray-400 dark:text-gray-500">
+                            downloads include updates, so this understates
+                        </span>
                     </p>
                 @endif
             </x-filament::section>
@@ -112,15 +157,41 @@
                         reports 3.1.4 and 3.1.7 separately.
                     </p>
                 @endif
+
+                {{--
+                    Our side of the comparison, in one line. It belongs here
+                    rather than on a card of its own: the whole column is a
+                    statement about how far our sample can be trusted, and
+                    the opt-in rate is the size of that sample.
+                --}}
+                <div class="mt-4 flex flex-wrap items-baseline gap-x-4 gap-y-1 border-t border-gray-100 pt-3 text-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
+                    <span>
+                        <span class="font-medium text-gray-700 dark:text-gray-300">
+                            {{ $headline['tracked'] !== null ? number_format($headline['tracked']) : '—' }}
+                        </span>
+                        tracked installs
+                    </span>
+                    <span>
+                        @if ($headline['optInRate'] === null)
+                            {{-- Never 0%: that would claim nobody opted in. --}}
+                            opt-in rate needs a public figure to divide by
+                        @else
+                            <span class="font-medium text-primary-600 dark:text-primary-400">
+                                {{ $headline['optInRate'] }}%
+                            </span>
+                            opt-in rate, against a figure already rounded
+                        @endif
+                    </span>
+                </div>
             </x-filament::section>
 
-            {{-- Reputation --}}
+            {{-- Support. Rating moved to the headline cards, so it is not repeated here. --}}
             <x-filament::section>
-                <x-slot name="heading">Reputation and support</x-slot>
+                <x-slot name="heading">Support</x-slot>
 
                 <dl class="space-y-4">
                     <div class="flex items-baseline justify-between">
-                        <dt class="text-sm font-medium text-gray-700 dark:text-gray-300">Rating</dt>
+                        <dt class="text-sm font-medium text-gray-700 dark:text-gray-300">Rating breakdown</dt>
                         <dd class="text-sm tabular-nums text-gray-600 dark:text-gray-400">
                             @if ($headline['rating'] === null || ! $headline['numRatings'])
                                 —
@@ -133,13 +204,6 @@
                             @endif
                         </dd>
                     </div>
-
-                    @if ($headline['numRatings'] !== null && $headline['numRatings'] > 0 && $headline['numRatings'] < 5)
-                        <p class="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
-                            {{-- A percentage drawn from a handful of people is not a quality signal. --}}
-                            Too few ratings to read as a score.
-                        </p>
-                    @endif
 
                     <div class="flex items-baseline justify-between">
                         <dt class="text-sm font-medium text-gray-700 dark:text-gray-300">Support threads</dt>

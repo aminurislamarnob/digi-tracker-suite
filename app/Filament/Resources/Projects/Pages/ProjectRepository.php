@@ -4,9 +4,11 @@ namespace App\Filament\Resources\Projects\Pages;
 
 use App\Filament\Resources\Projects\ProjectResource;
 use App\Filament\Widgets\RepositoryDownloadsChart;
+use App\Filament\Widgets\RepositoryDownloadsSummary;
 use App\Models\DailyStat;
 use App\Models\RepoRanking;
 use App\Services\RepoAnalytics;
+use App\Services\RepoDownloads;
 use App\Support\CurrentAccount;
 use BackedEnum;
 use Filament\Resources\Pages\Concerns\InteractsWithRecord;
@@ -51,7 +53,7 @@ class ProjectRepository extends Page
 
     protected function getHeaderWidgets(): array
     {
-        return [RepositoryDownloadsChart::class];
+        return [RepositoryDownloadsSummary::class, RepositoryDownloadsChart::class];
     }
 
     public function getHeaderWidgetsColumns(): int|array
@@ -60,8 +62,30 @@ class ProjectRepository extends Page
     }
 
     /**
-     * The headline trio: what the repository claims, what we measure, and
-     * the ratio between them.
+     * Conversion bands.
+     *
+     * A rule of thumb, and labelled as one in the view. Nobody publishes
+     * what a good download-to-install ratio is, so these thresholds are
+     * ours -- stated here rather than buried in a ternary, because a number
+     * that carries a verdict needs the verdict to be inspectable.
+     *
+     * @var array<int, array{float, string, string}>
+     */
+    protected const CONVERSION_BANDS = [
+        [10.0, 'very good', 'success'],
+        [5.0, 'good', 'success'],
+        [2.0, 'fair', 'warning'],
+        [0.0, 'low', 'danger'],
+    ];
+
+    /**
+     * The four public figures, as the repository reports them.
+     *
+     * Downloads, installs, rating, and the ratio between the first two.
+     * Nothing on these cards comes from telemetry -- which is the point of
+     * them leading the page. Telemetry starts at zero for every project and
+     * stays there until a release carrying the SDK reaches real sites; the
+     * repository has been publishing all along.
      *
      * @return array<string, mixed>
      */
@@ -75,17 +99,63 @@ class ProjectRepository extends Page
             ->orderByDesc('date')
             ->value('active_installs'));
 
+        $downloads = app(RepoDownloads::class)->summary($this->record);
+        $installs = $snapshot?->active_installs;
+
         return [
             'linked' => $this->record->isOnRepository(),
             'snapshot' => $snapshot,
-            'publicInstalls' => $snapshot?->active_installs,
+            'downloads' => $downloads['allTime'],
+            'downloadsYesterday' => $downloads['yesterday'],
+            'publicInstalls' => $installs,
             'tracked' => $tracked,
-            'optInRate' => $analytics->optInRate($tracked, $snapshot?->active_installs),
+            'optInRate' => $analytics->optInRate($tracked, $installs),
             'rating' => $snapshot?->rating,
             'numRatings' => $snapshot?->num_ratings,
             'resolutionRate' => $snapshot?->resolutionRate(),
             'supportThreads' => $snapshot?->support_threads,
+            ...$this->getConversion($installs, $downloads['allTime']),
         ];
+    }
+
+    /**
+     * Installs over downloads.
+     *
+     * Read as an install rate it understates badly, and knowing why matters
+     * before quoting it: the daily series counts every update every
+     * existing site pulls, not just first installs, so an established
+     * plugin is dividing by a number that grows with its own success. The
+     * trend in it still says something even where the level does not, which
+     * is the case for showing it -- with the view saying what it is rather
+     * than calling it a conversion rate full stop.
+     *
+     * @return array{conversion: ?float, conversionLabel: ?string, conversionColour: ?string}
+     */
+    protected function getConversion(?int $installs, ?int $downloads): array
+    {
+        // Null, never 0%: with either half missing there is no ratio at
+        // all, which is not the same as a ratio of nothing.
+        if (! $installs || ! $downloads) {
+            return ['conversion' => null, 'conversionLabel' => null, 'conversionColour' => null];
+        }
+
+        /*
+         * Capped, for the same reason the opt-in rate is: active_installs
+         * is published in rounded buckets, so a plugin sitting just over a
+         * bucket edge can report more installs than it has ever had
+         * downloads. 224% is not a finding, it is an artefact of the
+         * rounding -- and printed on a card it would discredit every other
+         * figure beside it.
+         */
+        $rate = round(min(100, $installs / $downloads * 100), 2);
+
+        foreach (self::CONVERSION_BANDS as [$floor, $label, $colour]) {
+            if ($rate >= $floor) {
+                return ['conversion' => $rate, 'conversionLabel' => $label, 'conversionColour' => $colour];
+            }
+        }
+
+        return ['conversion' => $rate, 'conversionLabel' => null, 'conversionColour' => null];
     }
 
     /**

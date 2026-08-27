@@ -6,6 +6,7 @@ use App\Filament\Resources\Projects\Pages\ProjectRepository;
 use App\Models\Account;
 use App\Models\DailyStat;
 use App\Models\Project;
+use App\Models\RepoDownload;
 use App\Models\RepoKeyword;
 use App\Models\RepoRanking;
 use App\Models\RepoRelease;
@@ -16,6 +17,7 @@ use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
+use Tests\Concerns\FakesWordPressOrg;
 use Tests\TestCase;
 
 /**
@@ -29,7 +31,7 @@ use Tests\TestCase;
  */
 class ProjectRepositoryPageTest extends TestCase
 {
-    use RefreshDatabase;
+    use FakesWordPressOrg, RefreshDatabase;
 
     protected Account $account;
 
@@ -38,6 +40,10 @@ class ProjectRepositoryPageTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // The page reads the download summary live, so every render needs
+        // this or TestCase's stray-request guard refuses the call.
+        $this->fakeDownloadSummary();
 
         $this->account = Account::factory()->create();
         $this->project = Project::factory()->for($this->account)->create([
@@ -275,5 +281,148 @@ class ProjectRepositoryPageTest extends TestCase
         $this->page()
             ->assertOk()
             ->assertSee('Not linked to wordpress.org');
+    }
+
+    /*
+     * The four headline cards.
+     */
+
+    protected function download(int $daysAgo, int $downloads): void
+    {
+        RepoDownload::acrossAccounts()->create([
+            'account_id' => $this->account->id,
+            'project_id' => $this->project->id,
+            'date' => today()->subDays($daysAgo),
+            'downloads' => $downloads,
+        ]);
+    }
+
+    /**
+     * All time comes from wordpress.org's summary endpoint, not from
+     * summing our daily table. The daily endpoint stops at 730 days, so the
+     * sum undercounts every plugin older than two years -- silently, and by
+     * more the longer the plugin has been out.
+     */
+    public function test_the_download_total_is_wordpress_orgs_all_time_figure(): void
+    {
+        $this->fakeDownloadSummary(['all_time' => 78_203]);
+        $this->snapshot();
+
+        // Present, and pointedly not what is shown.
+        $this->download(daysAgo: 1, downloads: 60);
+
+        $this->assertSame(78_203, $this->page()->instance()->getHeadline()['downloads']);
+    }
+
+    public function test_conversion_is_installs_over_all_time_downloads(): void
+    {
+        $this->fakeDownloadSummary(['all_time' => 57_988]);
+        $this->snapshot(['active_installs' => 10_000]);
+
+        $headline = $this->page()->instance()->getHeadline();
+
+        $this->assertSame(17.24, $headline['conversion']);
+        $this->assertSame('very good', $headline['conversionLabel']);
+    }
+
+    /**
+     * Null, never 0%. A missing half means there is no ratio at all, which
+     * is a different statement from a ratio of nothing -- and 0% next to
+     * 10,000 installs would read as a catastrophe rather than an absence.
+     */
+    public function test_conversion_needs_both_halves(): void
+    {
+        $this->fakeDownloadSummary(['all_time' => null]);
+        $this->snapshot(['active_installs' => 10_000]);
+
+        $headline = $this->page()->instance()->getHeadline();
+
+        $this->assertNull($headline['conversion']);
+        $this->assertNull($headline['conversionLabel']);
+    }
+
+    public function test_the_conversion_band_moves_with_the_rate(): void
+    {
+        $this->fakeDownloadSummary(['all_time' => 10_000]);
+        $this->snapshot(['active_installs' => 100]);
+
+        $headline = $this->page()->instance()->getHeadline();
+
+        $this->assertSame(1.0, $headline['conversion']);
+        $this->assertSame('low', $headline['conversionLabel']);
+        $this->assertSame('danger', $headline['conversionColour']);
+    }
+
+    /**
+     * active_installs is published in rounded buckets, so a plugin sitting
+     * just over a bucket edge can report more installs than it has ever had
+     * downloads. 224% would look like a bug and discredit every other
+     * figure on the page.
+     */
+    public function test_conversion_is_capped_at_one_hundred_percent(): void
+    {
+        $this->fakeDownloadSummary(['all_time' => 4_468]);
+        $this->snapshot(['active_installs' => 10_000]);
+
+        $this->assertSame(100.0, $this->page()->instance()->getHeadline()['conversion']);
+    }
+
+    public function test_the_four_public_figures_are_on_the_page(): void
+    {
+        $this->fakeDownloadSummary(['all_time' => 78_203]);
+        $this->snapshot(['active_installs' => 10_000, 'rating' => 98, 'num_ratings' => 9]);
+
+        $this->page()
+            ->assertOk()
+            ->assertSee('Downloads')
+            ->assertSee('Installations')
+            ->assertSee('Rating')
+            ->assertSee('Conversion')
+            ->assertSee('78,203')
+            ->assertSee('10,000')
+            ->assertSee('98%');
+    }
+
+    /**
+     * The rating is a percentage of nothing until somebody rates it, and
+     * "0%" is how that would render. That reads as a terrible plugin rather
+     * than a new one.
+     */
+    public function test_no_ratings_shows_no_score(): void
+    {
+        $this->snapshot(['rating' => 0, 'num_ratings' => 0]);
+
+        $this->page()
+            ->assertOk()
+            ->assertSee('no ratings yet');
+    }
+
+    /**
+     * The page chrome, asserted because half of it is ours.
+     *
+     * The breadcrumbs sit on the right through an override of Filament's
+     * own header blade, in resources/views/vendor/filament-panels. An
+     * override is invisible until a Filament upgrade ships a header this
+     * one no longer resembles, at which point the layout quietly reverts or
+     * breaks. This is the test that notices.
+     */
+    public function test_the_tabs_run_across_the_top_and_the_breadcrumbs_sit_right(): void
+    {
+        $this->snapshot();
+
+        $html = $this->get(ProjectRepository::getUrl(['record' => $this->project]))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('fi-page-sub-navigation-tabs', $html);
+        $this->assertStringNotContainsString('fi-page-sub-navigation-sidebar', $html);
+
+        // Our right-hand column, and the heading now printed ahead of the
+        // breadcrumbs rather than beneath them.
+        $this->assertStringContainsString('fi-header-end-ctn', $html);
+        $this->assertLessThan(
+            strpos($html, 'fi-breadcrumbs'),
+            strpos($html, 'fi-header-heading'),
+        );
     }
 }

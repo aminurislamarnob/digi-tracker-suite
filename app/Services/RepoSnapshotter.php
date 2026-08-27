@@ -53,12 +53,23 @@ class RepoSnapshotter
             return null;
         }
 
+        /*
+         * The summary endpoint agrees with wordpress.org's own page by
+         * construction, so its all_time wins over plugin_information's
+         * `downloaded` -- the two differ by a few counts, and the one
+         * people can check us against is the one to keep.
+         */
+        $summary = $this->repository->downloadSummary($slug);
+
         $snapshot = RepoSnapshot::acrossAccounts()->updateOrCreate(
             ['project_id' => $project->id, 'captured_on' => $on->toDateString()],
             [
                 'account_id' => $project->account_id,
                 'active_installs' => $this->intOrNull($info['active_installs'] ?? null),
-                'downloaded' => $this->intOrNull($info['downloaded'] ?? null),
+                'downloaded' => $summary['all_time'] ?? $this->intOrNull($info['downloaded'] ?? null),
+                'downloads_today' => $summary['today'] ?? null,
+                'downloads_yesterday' => $summary['yesterday'] ?? null,
+                'downloads_last_week' => $summary['last_week'] ?? null,
                 'rating' => $this->intOrNull($info['rating'] ?? null),
                 'num_ratings' => $this->intOrNull($info['num_ratings'] ?? null),
                 'ratings' => is_array($info['ratings'] ?? null) ? $info['ratings'] : null,

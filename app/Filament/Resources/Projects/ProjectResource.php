@@ -12,6 +12,7 @@ use App\Filament\Resources\Projects\RelationManagers\DeactivationReasonsRelation
 use App\Filament\Resources\Projects\RelationManagers\MetaFieldsRelationManager;
 use App\Models\DailyStat;
 use App\Models\Project;
+use App\Services\RepoAnalytics;
 use BackedEnum;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
@@ -20,6 +21,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Pages\Enums\SubNavigationPosition;
 use Filament\Resources\Pages\Page;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
@@ -28,6 +30,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class ProjectResource extends Resource
 {
@@ -36,6 +39,18 @@ class ProjectResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPuzzlePiece;
 
     protected static ?int $navigationSort = 1;
+
+    /*
+     * Tabs across the top, not a second sidebar.
+     *
+     * A project's four screens are one subject looked at four ways, and a
+     * vertical rail beside the panel's own navigation reads as a second
+     * hierarchy rather than a set of views. Across the top they read as
+     * what they are -- and the charts get the width back, which on a
+     * two-year download series is the difference between a shape and a
+     * smudge.
+     */
+    protected static ?SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
 
     protected static ?string $recordTitleAttribute = 'name';
 
@@ -186,24 +201,125 @@ class ProjectResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            /*
+             * One eager load and one aggregate for the whole page, rather
+             * than a query per row. Snapshots are append-only, so "current"
+             * always means the newest row; latestRepoSnapshot resolves that
+             * once for every project on screen.
+             */
+            ->modifyQueryUsing(fn (Builder $query) => $query
+                ->select('projects.*')
+                ->with('latestRepoSnapshot')
+                ->withSum([
+                    'repoDownloads as downloads_30d' => fn (Builder $downloads) => $downloads
+                        ->where('date', '>=', now()->subDays(30)->toDateString()),
+                ], 'downloads')
+                /*
+                 * Read from the nightly rollup, never from site_reports:
+                 * aggregating JSON history on a list page is exactly the
+                 * query that makes a MySQL dashboard feel broken. As a
+                 * subquery rather than per row, because two columns need
+                 * this figure and a list of twenty projects would otherwise
+                 * fetch it forty times.
+                 */
+                ->addSelect(['tracked_installs' => DailyStat::query()
+                    ->select('active_installs')
+                    ->whereColumn('project_id', 'projects.id')
+                    ->orderByDesc('date')
+                    ->limit(1),
+                ]))
             ->columns([
                 TextColumn::make('name')->searchable()->sortable(),
                 TextColumn::make('slug')->color('gray')->searchable(),
 
-                TextColumn::make('tracked_installs')
-                    ->label('Tracked installs')
+                /*
+                 * The public record comes first, because it is the half
+                 * that exists today. Telemetry only fills in once a release
+                 * carrying the SDK is out; the repository has been
+                 * publishing all along.
+                 */
+                TextColumn::make('public_installs')
+                    ->label('Public installs')
                     ->numeric()
-                    // Read from the nightly rollup, never from site_reports:
-                    // aggregating JSON history on a list page is exactly the
-                    // query that makes a MySQL dashboard feel broken.
-                    ->state(fn (Project $record) => DailyStat::query()
-                        ->where('project_id', $record->id)
-                        ->orderByDesc('date')
-                        ->value('active_installs') ?? 0),
+                    ->alignEnd()
+                    ->state(fn (Project $record) => $record->latestRepoSnapshot?->active_installs)
+                    // Never 0: an unlinked project has no figure, which is
+                    // not the same as a plugin nobody installed.
+                    ->placeholder('--')
+                    ->tooltip('wordpress.org publishes this rounded to a bucket, never exactly.'),
 
-                TextColumn::make('sites_count')->label('Sites')->counts('sites')->sortable(),
+                TextColumn::make('downloads_30d')
+                    ->label('Downloads, 30d')
+                    ->numeric()
+                    ->alignEnd()
+                    ->sortable()
+                    ->placeholder('--'),
+
+                TextColumn::make('repo_rating')
+                    ->label('Rating')
+                    ->alignEnd()
+                    ->state(function (Project $record) {
+                        $snapshot = $record->latestRepoSnapshot;
+
+                        // A score drawn from a handful of people is not a
+                        // quality signal, and rendering it as one invites it
+                        // to be quoted.
+                        if (! $snapshot?->num_ratings) {
+                            return null;
+                        }
+
+                        return round($snapshot->rating / 20, 1).' / 5';
+                    })
+                    ->description(fn (Project $record) => $record->latestRepoSnapshot?->num_ratings
+                        ? number_format($record->latestRepoSnapshot->num_ratings).' ratings'
+                        : null)
+                    ->placeholder('--'),
+
+                TextColumn::make('tracked_installs')
+                    ->label('Tracked')
+                    ->numeric()
+                    ->alignEnd()
+                    ->sortable()
+                    ->default(0)
+                    ->tooltip('Sites that opted in and reported within 30 days. Claimed, not proven.'),
+
+                /*
+                 * The number the whole feature exists to produce, and the
+                 * one that needs its caveat carried with it: an estimate
+                 * against a figure wordpress.org has already rounded.
+                 */
+                TextColumn::make('opt_in_rate')
+                    ->label('Opt-in')
+                    ->alignEnd()
+                    ->state(function (Project $record) {
+                        $rate = app(RepoAnalytics::class)->optInRate(
+                            $record->tracked_installs === null ? null : (int) $record->tracked_installs,
+                            $record->latestRepoSnapshot?->active_installs,
+                        );
+
+                        return $rate === null ? null : $rate.'%';
+                    })
+                    // Null, never 0%: with no public figure there is nothing
+                    // to divide by, which does not mean nobody opted in.
+                    ->placeholder('--'),
+
+                TextColumn::make('sites_count')
+                    ->label('Sites')
+                    ->counts('sites')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 IconColumn::make('is_active')->label('Active')->boolean(),
             ])
+            /*
+             * Straight to the repository dashboard, which is where the data
+             * is -- but only where there is one. Sending an unlinked project
+             * to a page whose whole content is "not linked" would put its
+             * own details one click further away for no gain.
+             */
+            ->recordUrl(fn (Project $record) => $record->isOnRepository()
+                ? ProjectRepository::getUrl(['record' => $record])
+                : ViewProject::getUrl(['record' => $record]))
             ->recordActions([
                 ViewAction::make(),
                 EditAction::make(),
@@ -229,13 +345,18 @@ class ProjectResource extends Resource
      * Without this the Reports and Repository pages are routable but
      * unreachable -- registered in getPages(), reachable only by typing the
      * URL. A page nobody can find is a page nobody uses.
+     *
+     * Repository leads, because it is the tab that has something to show.
+     * Telemetry starts at zero for every project and stays there until a
+     * release carrying the SDK reaches real sites; the public record goes
+     * back years and is complete on the day a project is linked.
      */
     public static function getRecordSubNavigation(Page $page): array
     {
         return $page->generateNavigationItems([
+            ProjectRepository::class,
             ViewProject::class,
             ProjectReports::class,
-            ProjectRepository::class,
             EditProject::class,
         ]);
     }

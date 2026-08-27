@@ -65,6 +65,15 @@ class RepoIntelligenceTest extends TestCase
 
         Http::fake([
             'api.wordpress.org/plugins/info/1.2/*action=plugin_information*' => Http::response($info),
+            /*
+             * Before the daily-series pattern, because historical_summary
+             * is a query parameter on the same path -- the series stub
+             * would otherwise swallow it and hand back a list of dates
+             * where four totals were expected.
+             */
+            'api.wordpress.org/stats/plugin/1.0/downloads.php*historical_summary*' => Http::response([
+                'today' => '10', 'yesterday' => '9', 'last_week' => '63', 'all_time' => '4468',
+            ]),
             'api.wordpress.org/stats/plugin/1.0/downloads.php*' => Http::response([
                 '2026-08-24' => 11,
                 '2026-08-25' => 8,
@@ -140,22 +149,47 @@ class RepoIntelligenceTest extends TestCase
     public function test_a_revised_download_count_overwrites_rather_than_duplicates(): void
     {
         /*
-         * A sequence rather than two Http::fake() calls: the second call
-         * appends stubs rather than replacing them, so the first pattern
-         * keeps matching and the new response is never served.
+         * A stub that answers from a variable, rather than a sequence.
+         *
+         * A sequence would have to know exactly how many times the endpoint
+         * is called per capture, and it is called more than once: the
+         * window excludes the day in progress, so today is fetched
+         * separately, and the summary is a third call on the same path.
+         * Pinning a test to that count makes it fail the next time the
+         * service asks one more question, which is noise rather than
+         * signal. A variable pins what matters -- what the second fetch
+         * says -- and nothing else.
          */
+        $revised = false;
+
         Http::fake([
             'api.wordpress.org/plugins/info/1.2/*action=plugin_information*' => Http::response([
                 'slug' => 'metadata-viewer', 'version' => '2.2.4',
             ]),
-            'api.wordpress.org/stats/plugin/1.0/downloads.php*' => Http::sequence()
-                ->push(['2026-08-24' => 11, '2026-08-25' => 8, '2026-08-26' => 9])
-                ->push(['2026-08-26' => 17]),
+            'api.wordpress.org/stats/plugin/1.0/downloads.php*historical_summary*' => Http::response([
+                'today' => '3', 'yesterday' => '9', 'last_week' => '40', 'all_time' => '4468',
+            ]),
+            'api.wordpress.org/stats/plugin/1.0/downloads.php*' => function ($request) use (&$revised) {
+                parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+
+                // limit=1 is wordpress.org's today-only response, and this
+                // plugin has no downloads today in either fetch.
+                if (($query['limit'] ?? null) === '1') {
+                    return Http::response([]);
+                }
+
+                return Http::response($revised
+                    ? ['2026-08-26' => 17]
+                    : ['2026-08-24' => 11, '2026-08-25' => 8, '2026-08-26' => 9]);
+            },
             'api.wordpress.org/stats/plugin/1.0/*' => Http::response([]),
             'plugins.svn.wordpress.org/*' => Http::response($this->svnTagsXml()),
         ]);
 
         $this->capture();
+
+        $revised = true;
+
         $this->capture();
 
         $this->assertSame(3, RepoDownload::acrossAccounts()->count());

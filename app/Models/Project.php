@@ -6,6 +6,7 @@ use App\Models\Concerns\BelongsToAccount;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
 class Project extends Model
@@ -113,6 +114,19 @@ class Project extends Model
     public function repoSnapshots(): HasMany
     {
         return $this->hasMany(RepoSnapshot::class);
+    }
+
+    /**
+     * The most recent capture, for list screens.
+     *
+     * Snapshots are append-only -- one row per project per day -- so the
+     * "current" public figure is always the newest row rather than a column
+     * anywhere. A list page reading that per row would issue a query per
+     * project; latestOfMany makes it one eager load for the whole page.
+     */
+    public function latestRepoSnapshot(): HasOne
+    {
+        return $this->hasOne(RepoSnapshot::class)->latestOfMany('captured_on');
     }
 
     public function repoDownloads(): HasMany
