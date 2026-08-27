@@ -45,6 +45,30 @@ Schedule::command('telemetry:build-daily-stats')->dailyAt('02:15')->withoutOverl
 Schedule::command('telemetry:detect-anomalies')->hourly()->withoutOverlapping();
 
 /*
+ * The public half of the picture, from wordpress.org.
+ *
+ * Most of what this captures has no public history -- active installs,
+ * ratings and support threads are only ever "as of now" -- so a day missed
+ * is a day nobody can recover later. That is the whole argument for a daily
+ * run even when nothing appears to have changed.
+ *
+ * 03:00 rather than alongside the rollup: it is the only scheduled task
+ * that depends on a third party answering, and it has no business competing
+ * for the same minute as work that must not be late.
+ */
+Schedule::command('telemetry:fetch-repo-stats')->dailyAt('03:00')->withoutOverlapping();
+
+/*
+ * Search rankings, an hour later and deliberately apart.
+ *
+ * Each keyword costs several requests to a public API we are a guest on.
+ * Running it back-to-back with the snapshot would concentrate every call we
+ * make into one window, and being rate-limited off wordpress.org would take
+ * the snapshot down with it.
+ */
+Schedule::command('telemetry:track-keywords')->dailyAt('04:00')->withoutOverlapping();
+
+/*
  * After the rollup, not before: the digest reads daily_stats, and a digest
  * confidently reporting last night's numbers because it ran first is worse
  * than one that arrives an hour later.

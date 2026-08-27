@@ -13,7 +13,7 @@ class Project extends Model
     use BelongsToAccount, HasFactory;
 
     protected $fillable = [
-        'account_id', 'hash', 'name', 'slug', 'type',
+        'account_id', 'hash', 'name', 'slug', 'wporg_slug', 'type',
         'homepage_url', 'demo_url', 'description', 'icon_path', 'is_active', 'is_demo',
         'from_name', 'reply_to', 'support_email', 'email_footer',
         'replies_to_deactivations', 'forwards_deactivations', 'sends_weekly_digest',
@@ -102,5 +102,41 @@ class Project extends Model
     public function dailyStats(): HasMany
     {
         return $this->hasMany(DailyStat::class);
+    }
+
+    /*
+     * The public half. A project without a wporg_slug is not broken -- a
+     * private or unpublished plugin still collects telemetry perfectly
+     * well; it simply has nothing public to compare itself against.
+     */
+
+    public function repoSnapshots(): HasMany
+    {
+        return $this->hasMany(RepoSnapshot::class);
+    }
+
+    public function repoDownloads(): HasMany
+    {
+        return $this->hasMany(RepoDownload::class);
+    }
+
+    public function repoReleases(): HasMany
+    {
+        return $this->hasMany(RepoRelease::class);
+    }
+
+    public function repoKeywords(): HasMany
+    {
+        return $this->hasMany(RepoKeyword::class);
+    }
+
+    public function repoRankings(): HasMany
+    {
+        return $this->hasMany(RepoRanking::class);
+    }
+
+    public function isOnRepository(): bool
+    {
+        return filled($this->wporg_slug);
     }
 }

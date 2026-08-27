@@ -6,6 +6,7 @@ use App\Filament\Resources\Projects\Pages\CreateProject;
 use App\Filament\Resources\Projects\Pages\EditProject;
 use App\Filament\Resources\Projects\Pages\ListProjects;
 use App\Filament\Resources\Projects\Pages\ProjectReports;
+use App\Filament\Resources\Projects\Pages\ProjectRepository;
 use App\Filament\Resources\Projects\Pages\ViewProject;
 use App\Filament\Resources\Projects\RelationManagers\DeactivationReasonsRelationManager;
 use App\Filament\Resources\Projects\RelationManagers\MetaFieldsRelationManager;
@@ -19,6 +20,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Resources\Pages\Page;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -47,7 +49,21 @@ class ProjectResource extends Resource
                     ->required()
                     ->maxLength(255)
                     ->alphaDash()
-                    ->helperText('Used in dashboard URLs. Match the wordpress.org slug.'),
+                    ->helperText('Used in dashboard URLs.'),
+
+                /*
+                 * Separate from `slug` because the two are not ours to
+                 * conflate. Ours is free to change; this one belongs to
+                 * wordpress.org and is the key every public endpoint is
+                 * addressed by. Leaving it empty is a valid state: an
+                 * unpublished plugin still collects telemetry, it simply
+                 * has no public half to compare against.
+                 */
+                TextInput::make('wporg_slug')
+                    ->label('wordpress.org slug')
+                    ->maxLength(255)
+                    ->alphaDash()
+                    ->helperText('From the plugin page URL. Leave empty if it is not published.'),
 
                 Select::make('type')
                     ->options(['plugin' => 'Plugin', 'theme' => 'Theme', 'bundle' => 'Bundle'])
@@ -207,6 +223,23 @@ class ProjectResource extends Resource
         ];
     }
 
+    /**
+     * The tabs across the top of a single project.
+     *
+     * Without this the Reports and Repository pages are routable but
+     * unreachable -- registered in getPages(), reachable only by typing the
+     * URL. A page nobody can find is a page nobody uses.
+     */
+    public static function getRecordSubNavigation(Page $page): array
+    {
+        return $page->generateNavigationItems([
+            ViewProject::class,
+            ProjectReports::class,
+            ProjectRepository::class,
+            EditProject::class,
+        ]);
+    }
+
     public static function getPages(): array
     {
         return [
@@ -214,6 +247,7 @@ class ProjectResource extends Resource
             'create' => CreateProject::route('/create'),
             'view' => ViewProject::route('/{record}'),
             'reports' => ProjectReports::route('/{record}/reports'),
+            'repository' => ProjectRepository::route('/{record}/repository'),
             'edit' => EditProject::route('/{record}/edit'),
         ];
     }
