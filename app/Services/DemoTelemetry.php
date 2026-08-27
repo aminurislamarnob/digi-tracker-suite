@@ -147,7 +147,25 @@ class DemoTelemetry
         int $weeks,
         array $releases,
         ?callable $onWeek = null,
+        ?int $seed = null,
     ): void {
+        /*
+         * A seeded generator is reproducible, which matters twice: a demo
+         * that looks different on every run is hard to talk about, and a
+         * test asserting the population "has churn with written feedback"
+         * is otherwise asserting a coin flip. Both showed up in practice --
+         * that test failed once in a suite run and then passed five times.
+         */
+        if ($seed !== null) {
+            mt_srand($seed);
+        }
+
+        // Note every random call below goes through mt_rand or array_rand,
+        // both of which honour mt_srand. random_int() would not: it draws
+        // from the CSPRNG and cannot be seeded, so a single use of it makes
+        // the whole generator irreproducible -- which is exactly how the
+        // flaky assertion survived the first attempt at this fix.
+
         $sites = $this->planSites($project, $siteCount, $weeks);
 
         // Captured once, before any mocking. Deriving each week from now()
@@ -156,12 +174,12 @@ class DemoTelemetry
         $today = Carbon::now();
 
         for ($week = $weeks; $week >= 0; $week--) {
-            $at = $today->copy()->subWeeks($week)->startOfWeek()->addHours(random_int(0, 167));
+            $at = $today->copy()->subWeeks($week)->startOfWeek()->addHours(mt_rand(0, 167));
 
             // The final week must not land in the future, or the sites it
             // creates are invisible to a rollup that stops at today.
             if ($at->greaterThan($today)) {
-                $at = $today->copy()->subHours(random_int(1, 20));
+                $at = $today->copy()->subHours(mt_rand(1, 20));
             }
 
             Carbon::setTestNow($at);
@@ -172,6 +190,11 @@ class DemoTelemetry
         }
 
         Carbon::setTestNow();
+
+        if ($seed !== null) {
+            // Leave the global generator as we found it.
+            mt_srand();
+        }
     }
 
     /**
@@ -198,7 +221,7 @@ class DemoTelemetry
                 // ~14% churn over the window, and a churner leaves at some
                 // point after it arrives rather than immediately.
                 'leaves_at_week' => mt_rand() / mt_getrandmax() < 0.14
-                    ? random_int(0, max(0, $arrival - 1))
+                    ? mt_rand(0, max(0, $arrival - 1))
                     : null,
 
                 // A handful come back after leaving.
@@ -220,12 +243,12 @@ class DemoTelemetry
                 'theme' => $this->weighted(array_fill_keys(array_keys(self::THEMES), 1)),
                 'multisite' => mt_rand() / mt_getrandmax() < 0.03,
                 'plugins' => $this->neighbourPlugins(),
-                'users' => random_int(1, 40),
+                'users' => mt_rand(1, 40),
                 'ip' => $this->ip(),
 
                 // How eagerly this site takes plugin updates. Drives the
                 // version-adoption curve, which is otherwise a step change.
-                'upgrade_lag' => random_int(0, 6),
+                'upgrade_lag' => mt_rand(0, 6),
                 'gone' => false,
             ];
         }
@@ -299,7 +322,7 @@ class DemoTelemetry
     {
         $arrivals = max(1, (int) round(($weeks - $week + 1) / 3));
 
-        for ($i = 0; $i < random_int(0, $arrivals * 2); $i++) {
+        for ($i = 0; $i < mt_rand(0, $arrivals * 2); $i++) {
             TrackingSkip::acrossAccounts()->create([
                 'account_id' => $project->account_id,
                 'project_id' => $project->id,
@@ -317,11 +340,11 @@ class DemoTelemetry
     {
         [$themeName, $themeVersion] = self::THEMES[$site['theme']];
 
-        $roles = ['administrator' => (string) random_int(1, 3)];
+        $roles = ['administrator' => (string) mt_rand(1, 3)];
 
         if ($site['users'] > 4) {
-            $roles['subscriber'] = (string) max(0, $site['users'] - random_int(2, 4));
-            $roles['editor'] = (string) random_int(1, 3);
+            $roles['subscriber'] = (string) max(0, $site['users'] - mt_rand(2, 4));
+            $roles['editor'] = (string) mt_rand(1, 3);
         }
 
         return [
@@ -348,8 +371,8 @@ class DemoTelemetry
             ],
             'users' => ['total' => (string) $site['users']] + $roles,
             'plugins' => $site['plugins'],
-            'active_plugins' => (string) (count($site['plugins']) + random_int(1, 6)),
-            'inactive_plugins' => (string) random_int(0, 5),
+            'active_plugins' => (string) (count($site['plugins']) + mt_rand(1, 6)),
+            'inactive_plugins' => (string) mt_rand(0, 5),
             // 'undeclared' is here on purpose: it is not in the whitelist,
             // so every payload proves the reconciler drops what it must.
             'extra' => array_filter([
@@ -410,12 +433,12 @@ class DemoTelemetry
 
     protected function ip(): string
     {
-        return sprintf('%d.%d.%d.%d', random_int(23, 203), random_int(0, 255), random_int(0, 255), random_int(1, 254));
+        return sprintf('%d.%d.%d.%d', mt_rand(23, 203), mt_rand(0, 255), mt_rand(0, 255), mt_rand(1, 254));
     }
 
     protected function neighbourPlugins(): array
     {
-        $slugs = (array) array_rand(self::NEIGHBOUR_PLUGINS, random_int(2, 7));
+        $slugs = (array) array_rand(self::NEIGHBOUR_PLUGINS, mt_rand(2, 7));
 
         $plugins = [];
 
@@ -430,7 +453,7 @@ class DemoTelemetry
     /** @param  array<string, int>  $weights */
     protected function weighted(array $weights): string
     {
-        $roll = random_int(1, array_sum($weights));
+        $roll = mt_rand(1, array_sum($weights));
 
         foreach ($weights as $value => $weight) {
             if (($roll -= $weight) <= 0) {

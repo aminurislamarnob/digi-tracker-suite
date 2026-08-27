@@ -30,7 +30,8 @@ class SeedDemoTelemetry extends Command
                             {--sites=320 : Total sites to invent across all projects}
                             {--weeks=16 : Weeks of history to generate}
                             {--fresh : Delete the existing demo account first}
-                            {--force : Allow this to run outside a local environment}';
+                            {--force : Allow this to run outside a local environment}
+                            {--seed= : Make the invented population reproducible}';
 
     protected $description = 'Create a demo account with invented telemetry, for exercising the dashboard';
 
@@ -107,8 +108,13 @@ class SeedDemoTelemetry extends Command
             $sites = max(4, (int) $this->option('sites'));
             $weeks = max(1, (int) $this->option('weeks'));
 
-            foreach (self::PROJECTS as $definition) {
-                $this->build($demo, $account, $definition, $sites, $weeks);
+            $seed = $this->option('seed') !== null ? (int) $this->option('seed') : null;
+
+            foreach (self::PROJECTS as $index => $definition) {
+                // Offset per project, or every plugin gets an identical
+                // population and the account looks obviously synthetic.
+                $this->build($demo, $account, $definition, $sites, $weeks,
+                    $seed !== null ? $seed + $index : null);
             }
 
             $this->newLine();
@@ -128,7 +134,7 @@ class SeedDemoTelemetry extends Command
         });
     }
 
-    protected function build(DemoTelemetry $demo, Account $account, array $definition, int $sites, int $weeks): void
+    protected function build(DemoTelemetry $demo, Account $account, array $definition, int $sites, int $weeks, ?int $seed = null): void
     {
         $project = Project::acrossAccounts()->firstOrCreate(
             ['account_id' => $account->id, 'slug' => $definition['slug']],
@@ -165,6 +171,7 @@ class SeedDemoTelemetry extends Command
             $weeks,
             $definition['releases'],
             fn () => $bar->advance(),
+            $seed,
         );
 
         $bar->finish();

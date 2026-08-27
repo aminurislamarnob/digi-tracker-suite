@@ -29,6 +29,9 @@ class DemoTelemetryTest extends TestCase
             '--sites' => $sites,
             '--weeks' => $weeks,
             '--fresh' => true,
+            // Fixed, so "the population has churn with written feedback" is
+            // an assertion about the generator rather than about luck.
+            '--seed' => 20260828,
         ])->assertSuccessful();
     }
 
