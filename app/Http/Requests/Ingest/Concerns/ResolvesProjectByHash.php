@@ -34,6 +34,10 @@ trait ResolvesProjectByHash
         $project = Project::acrossAccounts()
             ->where('hash', (string) $this->input('hash'))
             ->where('is_active', true)
+            // A demo project's numbers are invented. Letting one real site
+            // report into it would make the whole project ambiguous: nobody
+            // could say afterwards which rows had been measured.
+            ->where('is_demo', false)
             ->first();
 
         if (! $project) {

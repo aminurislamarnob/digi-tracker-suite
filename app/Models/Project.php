@@ -14,12 +14,12 @@ class Project extends Model
 
     protected $fillable = [
         'account_id', 'hash', 'name', 'slug', 'type',
-        'homepage_url', 'demo_url', 'description', 'icon_path', 'is_active',
+        'homepage_url', 'demo_url', 'description', 'icon_path', 'is_active', 'is_demo',
     ];
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean'];
+        return ['is_active' => 'boolean', 'is_demo' => 'boolean'];
     }
 
     /**
