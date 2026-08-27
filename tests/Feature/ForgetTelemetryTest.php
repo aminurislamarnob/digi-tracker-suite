@@ -10,6 +10,7 @@ use App\Models\Site;
 use App\Models\SitePlugin;
 use App\Models\SiteReport;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Tests\Concerns\PostsTelemetry;
 use Tests\TestCase;
 
@@ -105,6 +106,58 @@ class ForgetTelemetryTest extends TestCase
 
         $this->assertSame(0, Site::acrossAccounts()->count());
         $this->assertSame(0, RawPayload::acrossAccounts()->count());
+    }
+
+    /**
+     * End users do not cascade from sites and they hold the contact
+     * details, so erasing a site by URL while leaving its owner behind
+     * keeps an email address attached to nothing.
+     */
+    public function test_erasing_a_site_takes_its_owner_with_it(): void
+    {
+        $this->seedOneSite('one.com', 'owner@one.com');
+
+        $this->artisan('telemetry:forget', ['--site' => 'https://one.com', '--force' => true])
+            ->assertSuccessful();
+
+        $this->assertSame(0, EndUser::acrossAccounts()->count(), 'the owner was left stranded');
+    }
+
+    /**
+     * But somebody running the plugin on three sites who asks for one to be
+     * removed has not asked to be forgotten.
+     */
+    public function test_an_owner_with_other_sites_is_kept(): void
+    {
+        $this->track($this->project, ['url' => 'https://first.com', 'admin_email' => 'owner@shared.com'])->assertOk();
+        $this->track($this->project, ['url' => 'https://second.com', 'admin_email' => 'owner@shared.com'])->assertOk();
+
+        $this->assertSame(1, EndUser::acrossAccounts()->count());
+
+        $this->artisan('telemetry:forget', ['--site' => 'https://first.com', '--force' => true])
+            ->assertSuccessful();
+
+        $this->assertSame(1, EndUser::acrossAccounts()->count(), 'the owner still has a site');
+        $this->assertSame('second.com', Site::acrossAccounts()->sole()->canonical_url);
+    }
+
+    /**
+     * A dry run that under-reports is worse than no dry run: somebody reads
+     * "end users 0" and approves a deletion they did not understand.
+     */
+    public function test_the_dry_run_reports_what_it_will_actually_delete(): void
+    {
+        $this->seedOneSite('one.com', 'owner@one.com');
+
+        // Artisan::call rather than $this->artisan(), because the rendered
+        // output is the thing under test here, not the exit code.
+        Artisan::call('telemetry:forget', ['--email' => 'owner@one.com', '--dry-run' => true]);
+
+        $this->assertMatchesRegularExpression('/end users[^0-9]*1/', Artisan::output());
+
+        Artisan::call('telemetry:forget', ['--site' => 'https://one.com', '--dry-run' => true]);
+
+        $this->assertMatchesRegularExpression('/end users[^0-9]*1/', Artisan::output());
     }
 
     public function test_a_dry_run_deletes_nothing(): void

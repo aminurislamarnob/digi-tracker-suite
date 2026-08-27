@@ -110,12 +110,35 @@ class ForgetTelemetry extends Command
     ): int {
         $payloads = $this->payloadQuery($siteIds, $email, $urls);
 
+        /*
+         * End users do not cascade from sites, and they hold the contact
+         * details. Erasing a site by URL while leaving its owner behind
+         * keeps an email address attached to nothing -- a deletion that
+         * looks complete and is not.
+         *
+         * Only those left with no sites at all: somebody who runs the
+         * plugin on three sites and asks for one to be removed has not
+         * asked to be forgotten.
+         */
+        $ownerIds = $this->strandedOwners($siteIds);
+
+        // The email path targets an end user directly, and may match someone
+        // who owns no sites at all -- an orphan left behind by an earlier
+        // deletion. Counting only stranded owners would report zero while
+        // still deleting them, which is the worst way to be right.
+        if ($email !== null) {
+            $ownerIds = $ownerIds
+                ->merge(EndUser::where('email_index', EndUser::indexFor($email))->pluck('id'))
+                ->unique()
+                ->values();
+        }
+
         $counts = [
             'sites' => $siteIds->count(),
             'reports' => SiteReport::whereIn('site_id', $siteIds)->count(),
             'plugins' => SitePlugin::whereIn('site_id', $siteIds)->count(),
             'deactivations' => Deactivation::whereIn('site_id', $siteIds)->count(),
-            'end users' => $email ? EndUser::where('email_index', EndUser::indexFor($email))->count() : 0,
+            'end users' => $ownerIds->count(),
             'raw payloads' => $payloads->count(),
         ];
 
@@ -123,8 +146,10 @@ class ForgetTelemetry extends Command
         $this->line("Erasing <options=bold>{$what}</>:");
         $this->newLine();
 
+        // twoColumnDetail, not a padded line(): SymfonyStyle normalises
+        // runs of whitespace, so hand-aligned columns collapse into prose.
         foreach ($counts as $label => $count) {
-            $this->line(sprintf('  %-14s %s', $label, number_format($count)));
+            $this->components->twoColumnDetail($label, number_format($count));
         }
 
         $this->newLine();
@@ -141,12 +166,15 @@ class ForgetTelemetry extends Command
             return self::SUCCESS;
         }
 
-        DB::transaction(function () use ($siteIds, $alsoDelete, $email, $urls) {
+        DB::transaction(function () use ($siteIds, $alsoDelete, $email, $urls, $ownerIds) {
             // Reports, plugins and deactivations cascade from sites; raw
-            // payloads do not, which is the whole reason this command exists.
+            // payloads and end users do not, which is why this is a command
+            // and not a snippet somebody runs under pressure.
             $this->payloadQuery($siteIds, $email, $urls)->delete();
 
             Site::whereIn('id', $siteIds)->delete();
+
+            EndUser::whereIn('id', $ownerIds)->delete();
 
             $alsoDelete && $alsoDelete();
         });
@@ -154,6 +182,31 @@ class ForgetTelemetry extends Command
         $this->info('Erased.');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Owners who will have no sites left once these are gone.
+     *
+     * @param  Collection<int, int>  $siteIds
+     * @return Collection<int, int>
+     */
+    protected function strandedOwners($siteIds): Collection
+    {
+        $ownerIds = Site::whereIn('id', $siteIds)
+            ->whereNotNull('end_user_id')
+            ->distinct()
+            ->pluck('end_user_id');
+
+        if ($ownerIds->isEmpty()) {
+            return $ownerIds;
+        }
+
+        $keeping = Site::whereIn('end_user_id', $ownerIds)
+            ->whereNotIn('id', $siteIds)
+            ->distinct()
+            ->pluck('end_user_id');
+
+        return $ownerIds->diff($keeping)->values();
     }
 
     /**
