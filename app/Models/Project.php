@@ -27,6 +27,20 @@ class Project extends Model
         static::creating(function (Project $project) {
             $project->hash ??= (string) Str::uuid();
         });
+
+        // A project with no reason list would record deactivations it can
+        // never label, so the SDK's seven are seeded on day one.
+        static::created(fn (Project $project) => $project->seedDefaultReasons());
+    }
+
+    public function seedDefaultReasons(): void
+    {
+        foreach (DeactivationReason::DEFAULTS as $order => $reason) {
+            DeactivationReason::acrossAccounts()->firstOrCreate(
+                ['project_id' => $this->id, 'reason_id' => $reason['reason_id']],
+                $reason + ['account_id' => $this->account_id, 'sort_order' => $order],
+            );
+        }
     }
 
     public function sites(): HasMany
@@ -42,5 +56,30 @@ class Project extends Model
     public function reports(): HasMany
     {
         return $this->hasMany(SiteReport::class);
+    }
+
+    public function metaFields(): HasMany
+    {
+        return $this->hasMany(ProjectMetaField::class);
+    }
+
+    public function deactivationReasons(): HasMany
+    {
+        return $this->hasMany(DeactivationReason::class)->orderBy('sort_order');
+    }
+
+    public function deactivations(): HasMany
+    {
+        return $this->hasMany(Deactivation::class);
+    }
+
+    public function trackingSkips(): HasMany
+    {
+        return $this->hasMany(TrackingSkip::class);
+    }
+
+    public function dailyStats(): HasMany
+    {
+        return $this->hasMany(DailyStat::class);
     }
 }

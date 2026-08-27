@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Contracts\GeoLocator;
+use App\Services\Geo\MaxMindGeoLocator;
+use App\Services\Geo\NullGeoLocator;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -11,7 +14,13 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        $this->app->singleton(GeoLocator::class, function () {
+            $database = config('telemetry.geoip.database');
+
+            return $database
+                ? new MaxMindGeoLocator($database)
+                : new NullGeoLocator;
+        });
     }
 
     public function boot(): void

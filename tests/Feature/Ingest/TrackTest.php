@@ -175,7 +175,30 @@ class TrackTest extends TestCase
         }
 
         $this->assertSame(1, Site::acrossAccounts()->count());
-        $this->assertSame(4, SiteReport::acrossAccounts()->count());
+
+        // One report, not four: see the duplicate-suppression test below.
+        $this->assertSame(1, SiteReport::acrossAccounts()->count());
+    }
+
+    /**
+     * A site reports weekly. Anything arriving again within hours with an
+     * unchanged environment is a retry or a misconfigured cron, and would
+     * otherwise weight that one site four times in every distribution.
+     */
+    public function test_an_identical_repeat_within_the_window_does_not_add_a_report(): void
+    {
+        $this->track($this->payload())->assertOk();
+        $this->track($this->payload())->assertOk();
+
+        $this->assertSame(1, SiteReport::acrossAccounts()->count());
+
+        // But the site is still seen, and a genuine change still lands.
+        $this->assertSame(2, RawPayload::acrossAccounts()->count());
+
+        $this->travel(7)->days();
+        $this->track($this->payload())->assertOk();
+
+        $this->assertSame(2, SiteReport::acrossAccounts()->count());
     }
 
     public function test_an_unknown_hash_is_rejected(): void

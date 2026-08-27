@@ -3,9 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\Account;
+use App\Models\DailyStat;
+use App\Models\Deactivation;
 use App\Models\Project;
 use App\Models\Site;
+use App\Models\SitePlugin;
 use App\Models\SiteReport;
+use App\Models\TrackingSkip;
 use App\Support\CurrentAccount;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -109,6 +113,40 @@ class TenantIsolationTest extends TestCase
         );
 
         $this->assertSame($this->acme->id, $site->account_id);
+    }
+
+    /**
+     * Every table added after the boundary existed has to sit behind it
+     * too. A new telemetry table that forgets the trait is the single most
+     * likely way isolation breaks from here on.
+     */
+    public function test_the_boundary_covers_every_telemetry_table(): void
+    {
+        foreach ([$this->acmeProject, $this->globexProject] as $project) {
+            $this->post('/deactivate', [
+                'hash' => $project->hash,
+                'url' => 'https://'.$project->slug.'-customer.com',
+                'project_version' => '1.0.0',
+                'reason_id' => 'other',
+                'plugins' => ['woocommerce' => ['name' => 'WooCommerce', 'version' => '9.3.1']],
+                'is_local' => '',
+            ])->assertOk();
+
+            $this->post('/tracking-skipped', ['hash' => $project->hash])->assertOk();
+        }
+
+        $this->artisan('telemetry:build-daily-stats', ['--date' => now()->toDateString()]);
+
+        CurrentAccount::set($this->acme);
+
+        $this->assertSame(1, Deactivation::count());
+        $this->assertSame(1, SitePlugin::count());
+        $this->assertSame(1, TrackingSkip::count());
+        $this->assertSame(1, DailyStat::count());
+
+        foreach ([Deactivation::sole(), SitePlugin::sole(), TrackingSkip::sole(), DailyStat::sole()] as $record) {
+            $this->assertSame($this->acme->id, $record->account_id);
+        }
     }
 
     public function test_new_records_are_stamped_with_the_account_in_context(): void

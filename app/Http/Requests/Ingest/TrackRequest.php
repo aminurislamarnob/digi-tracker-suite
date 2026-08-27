@@ -2,10 +2,8 @@
 
 namespace App\Http\Requests\Ingest;
 
-use App\Models\Project;
+use App\Http\Requests\Ingest\Concerns\ResolvesProjectByHash;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Cache;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * Validates a heartbeat.
@@ -24,7 +22,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  */
 class TrackRequest extends FormRequest
 {
-    protected ?Project $resolvedProject = null;
+    use ResolvesProjectByHash;
 
     public function authorize(): bool
     {
@@ -49,37 +47,6 @@ class TrackRequest extends FormRequest
             'ip_address' => ['nullable', 'string', 'max:45'],
             'client' => ['nullable', 'string', 'max:32'],
         ];
-    }
-
-    /**
-     * Resolve the project -- and therefore the account -- from the hash.
-     *
-     * The hash is the only routing key the protocol offers and it is
-     * visible in GPL source, so it is treated as a claim. Crucially the
-     * account is taken from the project record here, never from anything
-     * the caller sent, so a forged payload cannot select a tenant.
-     */
-    public function project(): Project
-    {
-        if ($this->resolvedProject) {
-            return $this->resolvedProject;
-        }
-
-        $hash = (string) $this->input('hash');
-
-        $project = Cache::remember(
-            "project:hash:{$hash}",
-            now()->addMinutes(10),
-            fn () => Project::acrossAccounts()->where('hash', $hash)->where('is_active', true)->first(),
-        );
-
-        if (! $project) {
-            Cache::forget("project:hash:{$hash}");
-
-            throw new NotFoundHttpException('Unknown project.');
-        }
-
-        return $this->resolvedProject = $project;
     }
 
     public function isLocal(): bool

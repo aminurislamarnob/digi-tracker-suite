@@ -33,6 +33,16 @@ class Site extends Model
 
     public const INACTIVE_WINDOW_DAYS = 90;
 
+    public static function activeWindowDays(): int
+    {
+        return (int) config('telemetry.active_window_days', self::ACTIVE_WINDOW_DAYS);
+    }
+
+    public static function inactiveWindowDays(): int
+    {
+        return (int) config('telemetry.inactive_window_days', self::INACTIVE_WINDOW_DAYS);
+    }
+
     protected $fillable = [
         'account_id', 'project_id', 'end_user_id', 'site_key', 'url', 'canonical_url',
         'ua_fingerprint', 'name', 'ip', 'country', 'is_local',
@@ -63,5 +73,15 @@ class Site extends Model
     public function reports(): HasMany
     {
         return $this->hasMany(SiteReport::class);
+    }
+
+    public function plugins(): HasMany
+    {
+        return $this->hasMany(SitePlugin::class);
+    }
+
+    public function deactivations(): HasMany
+    {
+        return $this->hasMany(Deactivation::class);
     }
 }

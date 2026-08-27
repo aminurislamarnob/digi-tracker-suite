@@ -11,6 +11,16 @@ class RawPayload extends Model
 {
     use BelongsToAccount, HasFactory;
 
+    /*
+     * The three SDK routes, verbatim. They are baked into every installed
+     * copy of every plugin and can never change.
+     */
+    public const ROUTE_TRACK = 'track';
+
+    public const ROUTE_DEACTIVATE = 'deactivate';
+
+    public const ROUTE_TRACKING_SKIPPED = 'tracking-skipped';
+
     protected $fillable = [
         'account_id', 'project_id', 'route', 'payload',
         'ip', 'user_agent', 'processed_at', 'error',
