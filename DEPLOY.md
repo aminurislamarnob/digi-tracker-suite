@@ -16,6 +16,43 @@ See [Never rotate APP_KEY](#never-rotate-app_key).
 
 ---
 
+## The short version
+
+Nine steps. Detail for each is in the sections below.
+
+| # | Step | Where |
+|---|---|---|
+| 1 | **Turn on SSH** — may need ID verification, so start here | cPanel → SSH Access |
+| 2 | **Point `telemetry.pluginizelab.com` at the server** — an `A` record to the IP in cPanel's sidebar | your DNS host |
+| 3 | **Create the subdomain**, docroot `/home/USER/digi-tracker/public` | cPanel → Domains |
+| 4 | **Create the database and user**, note the `cpaneluser_` prefixes | cPanel → MySQL Databases |
+| 5 | **Build assets and upload** — `npm run build`, then `rsync` | your machine |
+| 6 | **Configure** — `.env`, then `php artisan key:generate` once, ever | server |
+| 7 | **Install** — `composer install`, `migrate`, `filament:assets`, `optimize` | server |
+| 8 | **One cron line** — `schedule:run`, every minute | cPanel → Cron Jobs |
+| 9 | **Create the first account and project**, copy the hash | server, via tinker |
+
+Steps 6 and 7 as one paste, once 1–5 are done:
+
+```sh
+cd ~/digi-tracker
+cp .env.example .env && php artisan key:generate
+nano .env                       # DB creds, APP_URL, APP_ENV=production, APP_DEBUG=false
+composer install --no-dev --optimize-autoloader
+php artisan migrate --force
+php artisan filament:assets
+php artisan optimize && php artisan filament:optimize
+chmod -R 775 storage bootstrap/cache
+```
+
+**Back up `APP_KEY` off the server before anything else touches it.** It encrypts every stored email
+address, and there is no recovery — see [Never rotate APP_KEY](#never-rotate-app_key).
+
+Then prove it works with section 6 rather than assuming: the failure mode here is a deploy that
+returns 200 and quietly loses every heartbeat.
+
+---
+
 ## 0. What you need access to
 
 Nothing here should be shared with anyone, including in a chat window. Everything below is either
