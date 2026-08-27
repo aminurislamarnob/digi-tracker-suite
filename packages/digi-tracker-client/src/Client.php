@@ -7,8 +7,8 @@ namespace PluginizeLab\DigiTracker;
  *
  * This class is necessary to set project data
  */
-class Client
-{
+class Client {
+
     /**
      * The client version.
      *
@@ -93,12 +93,11 @@ class Client
     /**
      * Initialize the class
      *
-     * @param  string  $hash  hash of the plugin
-     * @param  string  $name  readable name of the plugin
-     * @param  string  $file  main plugin file path
+     * @param string $hash hash of the plugin
+     * @param string $name readable name of the plugin
+     * @param string $file main plugin file path
      */
-    public function __construct($hash, $name, $file)
-    {
+    public function __construct( $hash, $name, $file ) {
         $this->hash = $hash;
         $this->name = $name;
         $this->file = $file;
@@ -111,18 +110,17 @@ class Client
      *
      * @return PluginizeLab\DigiTracker\Insights
      */
-    public function insights()
-    {
-        if (! class_exists(__NAMESPACE__.'\Insights')) {
-            require_once __DIR__.'/Insights.php';
+    public function insights() {
+        if ( ! class_exists( __NAMESPACE__ . '\Insights' ) ) {
+            require_once __DIR__ . '/Insights.php';
         }
 
         // if already instantiated, return the cached one
-        if ($this->insights) {
+        if ( $this->insights ) {
             return $this->insights;
         }
 
-        $this->insights = new Insights($this);
+        $this->insights = new Insights( $this );
 
         return $this->insights;
     }
@@ -132,11 +130,10 @@ class Client
      *
      * @return string
      */
-    public function endpoint()
-    {
-        $endpoint = apply_filters('digi_tracker_endpoint', 'https://telemetry.pluginizelab.com');
+    public function endpoint() {
+        $endpoint = apply_filters( 'digi_tracker_endpoint', 'https://telemetry.pluginizelab.com' );
 
-        return trailingslashit($endpoint);
+        return trailingslashit( $endpoint );
     }
 
     /**
@@ -144,28 +141,27 @@ class Client
      *
      * @return void
      */
-    protected function set_basename_and_slug()
-    {
-        if (strpos($this->file, WP_CONTENT_DIR.'/themes/') === false) {
-            $this->basename = plugin_basename($this->file);
+    protected function set_basename_and_slug() {
+        if ( strpos( $this->file, WP_CONTENT_DIR . '/themes/' ) === false ) {
+            $this->basename = plugin_basename( $this->file );
 
-            [$this->slug, $mainfile] = explode('/', $this->basename);
+            list( $this->slug, $mainfile ) = explode( '/', $this->basename );
 
-            require_once ABSPATH.'wp-admin/includes/plugin.php';
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
 
-            $plugin_data = get_plugin_data($this->file, false, false);
+            $plugin_data = get_plugin_data( $this->file, false, false );
 
             $this->project_version = $plugin_data['Version'];
-            $this->type = 'plugin';
+            $this->type            = 'plugin';
         } else {
-            $this->basename = str_replace(WP_CONTENT_DIR.'/themes/', '', $this->file);
+            $this->basename = str_replace( WP_CONTENT_DIR . '/themes/', '', $this->file );
 
-            [$this->slug, $mainfile] = explode('/', $this->basename);
+            list( $this->slug, $mainfile ) = explode( '/', $this->basename );
 
-            $theme = wp_get_theme($this->slug);
+            $theme = wp_get_theme( $this->slug );
 
             $this->project_version = $theme->version;
-            $this->type = 'theme';
+            $this->type            = 'theme';
         }
 
         $this->textdomain = $this->slug;
@@ -174,30 +170,30 @@ class Client
     /**
      * Send request to remote endpoint
      *
-     * @param  array  $params
-     * @param  string  $route
+     * @param array  $params
+     * @param string $route
+     *
      * @return array|WP_Error array of results including HTTP headers or WP_Error if the request failed
      */
-    public function send_request($params, $route, $blocking = false)
-    {
-        $url = $this->endpoint().$route;
+    public function send_request( $params, $route, $blocking = false ) {
+        $url = $this->endpoint() . $route;
 
         $headers = [
-            'user-agent' => 'DigiTracker/'.md5(esc_url(home_url())).';',
-            'Accept' => 'application/json',
+            'user-agent' => 'DigiTracker/' . md5( esc_url( home_url() ) ) . ';',
+            'Accept'     => 'application/json',
         ];
 
         $response = wp_remote_post(
             $url,
             [
-                'method' => 'POST',
-                'timeout' => 30,
+                'method'      => 'POST',
+                'timeout'     => 30,
                 'redirection' => 5,
                 'httpversion' => '1.0',
-                'blocking' => $blocking,
-                'headers' => $headers,
-                'body' => array_merge($params, ['client' => $this->version]),
-                'cookies' => [],
+                'blocking'    => $blocking,
+                'headers'     => $headers,
+                'body'        => array_merge( $params, [ 'client' => $this->version ] ),
+                'cookies'     => [],
             ]
         );
 
@@ -209,36 +205,32 @@ class Client
      *
      * @return bool
      */
-    public function is_local_server()
-    {
-        $is_local = isset($_SERVER['REMOTE_ADDR']) && in_array($_SERVER['REMOTE_ADDR'], ['127.0.0.1', '::1'], true);
+    public function is_local_server() {
+        $is_local = isset( $_SERVER['REMOTE_ADDR'] ) && in_array( $_SERVER['REMOTE_ADDR'], [ '127.0.0.1', '::1' ], true );
 
-        return apply_filters('digi_tracker_is_local', $is_local);
+        return apply_filters( 'digi_tracker_is_local', $is_local );
     }
 
     /**
      * Translate function _e()
      */
     // phpcs:ignore
-    public function _etrans($text)
-    {
-        call_user_func('_e', $text, $this->textdomain);
+    public function _etrans( $text ) {
+        call_user_func( '_e', $text, $this->textdomain );
     }
 
     /**
      * Translate function __()
      */
     // phpcs:ignore
-    public function __trans($text)
-    {
-        return call_user_func('__', $text, $this->textdomain);
+    public function __trans( $text ) {
+        return call_user_func( '__', $text, $this->textdomain );
     }
 
     /**
      * Set project textdomain
      */
-    public function set_textdomain($textdomain)
-    {
+    public function set_textdomain( $textdomain ) {
         $this->textdomain = $textdomain;
     }
 }

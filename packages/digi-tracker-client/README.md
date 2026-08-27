@@ -90,3 +90,14 @@ add_filter( 'digi_tracker_is_local', '__return_false' );
 
 GPL-2.0-or-later. Forked from `appsero/client`, © Tareq Hasan, MIT — a permissive licence, so
 redistribution under GPL is allowed. The MIT notice is retained in `LICENSE`.
+
+## Re-syncing with upstream
+
+The fork is a deliberately small diff — about 60 changed lines per file — so upstream fixes can be
+pulled in by re-applying the same renames rather than by merging.
+
+**Formatting is left exactly as upstream wrote it**, in WordPress Coding Standards style, and
+`pint.json` excludes `packages/` for that reason. Reformatting to Laravel style would turn every
+future upstream diff into noise and hide the handful of lines that actually differ.
+
+`tests/Unit/SdkForkTest.php` guards the renames that carry consequences. Run it after any re-sync.
