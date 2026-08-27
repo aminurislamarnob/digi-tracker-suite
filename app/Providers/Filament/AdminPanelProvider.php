@@ -54,6 +54,43 @@ class AdminPanelProvider extends PanelProvider
             ->registration(config('telemetry.auth.registration') ? Register::class : null)
 
             /*
+             * Client-side navigation once signed in.
+             *
+             * This is Livewire's wire:navigate, which Filament applies to
+             * every panel link: the next page arrives over XHR and replaces
+             * the body while the head is left alone, so stylesheets, scripts
+             * and Alpine's state survive the move. Chart.js in particular is
+             * parsed once per session rather than on every click, which is
+             * most of what makes the dashboard feel quick.
+             *
+             * Prefetching is deliberately left off. It fetches on hover, and
+             * the repository dashboard fetches wordpress.org on render -- so
+             * hovering the tab would put real requests on a public API we
+             * are a guest on, for a page nobody has decided to open yet.
+             */
+            ->spa()
+
+            /*
+             * The auth pages stay ordinary full page loads.
+             *
+             * Logging in and out is where the session identity changes, and
+             * swapping a body into a document that was rendered for somebody
+             * else is a class of bug worth not having: a stale CSRF token, a
+             * tenant menu belonging to the previous user, a flash of a panel
+             * the browser should already have forgotten.
+             *
+             * It costs nothing. These are entry and exit points, reached by
+             * typing a URL or by a redirect, both of which are full loads
+             * either way.
+             */
+            ->spaUrlExceptions(fn (): array => [
+                url('/admin/login'),
+                url('/admin/logout'),
+                url('/admin/register'),
+                url('/admin/password-reset/*'),
+            ])
+
+            /*
              * brandName stays set even though a logo is shown: Filament uses
              * it for the <title>, and it is the alt text if the image fails.
              */
