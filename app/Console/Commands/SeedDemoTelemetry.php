@@ -30,6 +30,7 @@ class SeedDemoTelemetry extends Command
                             {--sites=320 : Total sites to invent across all projects}
                             {--weeks=16 : Weeks of history to generate}
                             {--fresh : Delete the existing demo account first}
+                            {--forget : Delete the demo account and seed nothing}
                             {--force : Allow this to run outside a local environment}
                             {--seed= : Make the invented population reproducible}';
 
@@ -69,6 +70,23 @@ class SeedDemoTelemetry extends Command
 
     public function handle(): int
     {
+        /*
+         * The way out, and deliberately the first thing here.
+         *
+         * Demo data exists to exercise the dashboard before any plugin
+         * ships; the moment real heartbeats arrive it is worse than
+         * nothing, because an invented population and a measured one render
+         * identically. Removing it must be as easy as creating it, must not
+         * build the demo machinery on the way, and must never be refused by
+         * the environment guard below -- deleting invented rows is the safe
+         * direction in every environment there is.
+         */
+        if ($this->option('forget')) {
+            CurrentAccount::withoutScope(fn () => $this->forget());
+
+            return self::SUCCESS;
+        }
+
         /*
          * Local and testing only. Anywhere else -- staging included -- this
          * needs saying out loud, because invented telemetry sitting next to
