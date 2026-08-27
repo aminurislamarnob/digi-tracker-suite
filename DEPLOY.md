@@ -16,6 +16,82 @@ See [Never rotate APP_KEY](#never-rotate-app_key).
 
 ---
 
+## 0. What you need access to
+
+Nothing here should be shared with anyone, including in a chat window. Everything below is either
+something you already hold or something you generate yourself on the server.
+
+### cPanel
+
+Username and password, from the Namecheap dashboard (**Hosting List → Manage → cPanel**). Used for
+the things that have no command-line equivalent on shared hosting: creating the subdomain, creating
+the MySQL database and user, authorizing your SSH key, and the cron entry if you would rather not
+use `crontab -e`.
+
+### SSH
+
+| | |
+|---|---|
+| Host | the server hostname, e.g. `serverNNN.web-hosting.com` — **not** your domain, which may point at DNS you do not control yet |
+| Port | **21098** on Namecheap shared hosting, not 22 |
+| User | the same cPanel username |
+| Auth | an SSH **key**. Password auth is disabled on Namecheap shared hosting. |
+
+Two things catch people:
+
+- **The key must be *authorized*, not just uploaded.** cPanel → **SSH Access** → *Manage SSH Keys* →
+  import your public key, then click **Manage → Authorize**. An imported-but-unauthorized key fails
+  exactly like a wrong key.
+- **SSH may need switching on first.** On some Namecheap shared plans it is off until you request
+  it, and activation can require ID verification. That is worth starting before anything else,
+  because everything in this runbook depends on it.
+
+cPanel → **SSH Access** shows the host and port to use. Trust that page over this one.
+
+```sh
+ssh -p 21098 cpaneluser@serverNNN.web-hosting.com
+```
+
+Worth adding to `~/.ssh/config` so the rest of the runbook's plain `ssh user@server` works:
+
+```
+Host digitracker
+    HostName serverNNN.web-hosting.com
+    User     cpaneluser
+    Port     21098
+    IdentityFile ~/.ssh/id_ed25519
+```
+
+### MySQL
+
+Database name, username and password — all created by you in cPanel → **MySQL Databases**. Host is
+`localhost`. cPanel prefixes the database and user with your account name, so `digitracker` becomes
+`cpaneluser_digitracker`; use the prefixed names in `.env`.
+
+### DNS
+
+Whoever controls the zone for `pluginizelab.com` — the Namecheap account if the domain is registered
+and using their nameservers, or Cloudflare or similar if not. You need to add an `A` record for
+`telemetry` pointing at the server's IP, which cPanel shows on its right-hand sidebar.
+
+**Get this right the first time.** The ingest hostname is compiled into every released plugin and
+can never change.
+
+### Secrets you generate rather than obtain
+
+| | |
+|---|---|
+| `APP_KEY` | `php artisan key:generate` on the server, **once, ever**. Back it up somewhere that is not this server — see [Never rotate APP_KEY](#never-rotate-app_key). |
+| `POSTMARK_TOKEN` | Postmark → Servers → API Tokens. Only if you switch email on. |
+| MaxMind licence key | Only if you want country data. |
+
+### Not needed for a deploy
+
+Packagist and GitHub credentials matter for *publishing* the SDK package, not for standing the
+server up. They are a separate step and not on this critical path.
+
+---
+
 ## 1. Before you start
 
 Run the preflight on the server. It changes nothing and takes a second.
