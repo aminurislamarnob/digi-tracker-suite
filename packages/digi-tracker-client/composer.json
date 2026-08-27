@@ -1,0 +1,26 @@
+{
+    "name": "pluginizelab/digi-tracker-client",
+    "description": "WordPress telemetry client for Digi Tracker Suite. A fork of appsero/client that reports to your own server.",
+    "keywords": ["analytics", "telemetry", "wordpress", "plugin", "theme"],
+    "type": "library",
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name": "PluginizeLab",
+            "homepage": "https://pluginizelab.com"
+        },
+        {
+            "name": "Tareq Hasan",
+            "email": "tareq@appsero.com",
+            "role": "Author of appsero/client, from which this is forked"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "PluginizeLab\\DigiTracker\\": "src/"
+        }
+    },
+    "require": {
+        "php": ">=7.4"
+    }
+}
