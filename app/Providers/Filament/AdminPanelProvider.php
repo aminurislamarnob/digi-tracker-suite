@@ -28,9 +28,43 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+
+            /*
+             * brandName stays set even though a logo is shown: Filament uses
+             * it for the <title>, and it is the alt text if the image fails.
+             */
             ->brandName('Digi Tracker Suite')
+
+            /*
+             * Two files, because the wordmark is set in near-black and would
+             * disappear against Filament's dark surfaces. The dark variant
+             * carries the same mark with the wordmark reversed to white.
+             *
+             * Filament shows this on the sign-in screen and in the sidebar
+             * header, so both are branded from these two lines.
+             */
+            ->brandLogo(fn (): string => asset('images/pluginizelab-logo.png'))
+            ->darkModeBrandLogo(fn (): string => asset('images/pluginizelab-logo-dark.png'))
+
+            /*
+             * The source is 840x175, so height drives the width. 2rem keeps
+             * the wordmark legible without crowding the sidebar.
+             */
+            ->brandLogoHeight('2rem')
+
+            /*
+             * Cropped from the mark rather than the whole wordmark: at 4.8:1
+             * a scaled-down logo is an illegible smear in a browser tab.
+             */
+            ->favicon(fn (): string => asset('images/favicon-32.png'))
+
+            /*
+             * Sampled from the logo's mark (#195CE3) rather than left on
+             * Indigo, which sits noticeably purple next to it -- the buttons
+             * would have quietly disagreed with the brand on every screen.
+             */
             ->colors([
-                'primary' => Color::Indigo,
+                'primary' => Color::hex('#195CE3'),
             ])
 
             /*
