@@ -3,6 +3,7 @@
 namespace Tests\Feature\Panel;
 
 use App\Filament\Resources\Projects\Pages\ProjectRepository;
+use App\Jobs\RefreshRepoStats;
 use App\Models\Account;
 use App\Models\DailyStat;
 use App\Models\Project;
@@ -15,6 +16,8 @@ use App\Models\User;
 use App\Support\CurrentAccount;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Queue;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Tests\Concerns\FakesWordPressOrg;
@@ -41,6 +44,13 @@ class ProjectRepositoryPageTest extends TestCase
     {
         parent::setUp();
 
+        /*
+         * Linking a project queues its first capture -- see
+         * Project::refreshRepositoryOnLink. Faked before the project is
+         * created, or the sync queue runs a real fetch in setUp.
+         */
+        Queue::fake();
+
         // The page reads the download summary live, so every render needs
         // this or TestCase's stray-request guard refuses the call.
         $this->fakeDownloadSummary();
@@ -57,6 +67,15 @@ class ProjectRepositoryPageTest extends TestCase
         $this->actingAs($user);
         Filament::setTenant($this->account);
         CurrentAccount::set($this->account);
+
+        /*
+         * Creating the project above claimed the refresh cooldown, which is
+         * the interlock working -- linking and then pressing the button is
+         * meant to be one fetch. Released here so the button tests below
+         * exercise the button rather than that interlock, which has its own
+         * test.
+         */
+        Cache::forget(RefreshRepoStats::cooldownKey($this->project->id));
     }
 
     protected function page(): Testable
@@ -424,5 +443,58 @@ class ProjectRepositoryPageTest extends TestCase
             strpos($html, 'fi-breadcrumbs'),
             strpos($html, 'fi-header-heading'),
         );
+    }
+
+    /**
+     * The refresh button queues, and never fetches inline.
+     *
+     * Asserting the dispatch rather than the numbers is the point: a
+     * capture is four calls to wordpress.org, and the moment one of them
+     * happens during this Livewire call the button has become the thing it
+     * exists to avoid. TestCase's stray-request guard would catch the
+     * fetch, but only the queue assertion says why it must not happen.
+     */
+    public function test_refreshing_queues_the_capture_rather_than_fetching_inline(): void
+    {
+        Queue::fake();
+
+        $this->snapshot();
+
+        $this->page()->callAction('refresh')->assertHasNoActionErrors();
+
+        Queue::assertPushed(
+            RefreshRepoStats::class,
+            fn (RefreshRepoStats $job) => $job->projectId === $this->project->id,
+        );
+    }
+
+    /**
+     * A second press inside the cooldown buys nothing and costs a fetch.
+     *
+     * The guard is shared state rather than page state on purpose -- two
+     * people on one project hold separate Livewire components -- so this
+     * asserts through a fresh page, which is the case a disabled button
+     * would miss.
+     */
+    public function test_a_second_refresh_inside_the_cooldown_is_refused(): void
+    {
+        Queue::fake();
+
+        $this->snapshot();
+
+        $this->page()->callAction('refresh');
+        $this->page()->callAction('refresh');
+
+        Queue::assertPushed(RefreshRepoStats::class, 1);
+    }
+
+    /**
+     * Nothing to refresh without a slug, so nothing to press.
+     */
+    public function test_the_button_is_hidden_for_a_project_with_no_slug(): void
+    {
+        $this->project->update(['wporg_slug' => null]);
+
+        $this->page()->assertActionHidden('refresh');
     }
 }

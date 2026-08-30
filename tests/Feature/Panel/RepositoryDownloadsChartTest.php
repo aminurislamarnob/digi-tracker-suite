@@ -13,6 +13,7 @@ use Carbon\CarbonImmutable;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Queue;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -38,6 +39,13 @@ class RepositoryDownloadsChartTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        /*
+         * Linking a project queues its first capture -- see
+         * Project::refreshRepositoryOnLink. Faked before the project is
+         * created, or the sync queue runs a real fetch in setUp.
+         */
+        Queue::fake();
 
         // Frozen, because "last 90 days" is only assertable against a fixed
         // today, and a test that spans midnight fails once a year.

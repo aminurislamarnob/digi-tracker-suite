@@ -11,6 +11,7 @@ use App\Support\CurrentAccount;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 use Tests\Concerns\FakesWordPressOrg;
 use Tests\TestCase;
@@ -41,6 +42,13 @@ class RepositoryDownloadsSummaryTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        /*
+         * Linking a project queues its first capture -- see
+         * Project::refreshRepositoryOnLink. Faked before the project is
+         * created, or the sync queue runs a real fetch in setUp.
+         */
+        Queue::fake();
 
         $this->account = Account::factory()->create();
         $this->project = Project::factory()->for($this->account)->create([

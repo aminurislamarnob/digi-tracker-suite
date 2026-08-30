@@ -5,15 +5,19 @@ namespace App\Filament\Resources\Projects\Pages;
 use App\Filament\Resources\Projects\ProjectResource;
 use App\Filament\Widgets\RepositoryDownloadsChart;
 use App\Filament\Widgets\RepositoryDownloadsSummary;
+use App\Jobs\RefreshRepoStats;
 use App\Models\DailyStat;
 use App\Models\RepoRanking;
 use App\Services\RepoAnalytics;
 use App\Services\RepoDownloads;
 use App\Support\CurrentAccount;
 use BackedEnum;
+use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\Concerns\InteractsWithRecord;
 use Filament\Resources\Pages\Page;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * The public half of the picture, next to ours.
@@ -49,6 +53,62 @@ class ProjectRepository extends Page
     public function getSubheading(): ?string
     {
         return $this->record->name;
+    }
+
+    /**
+     * Fetch the public record now, without waiting for 03:00.
+     *
+     * The work is queued rather than done here -- see RefreshRepoStats for
+     * why -- so the honest thing to report is that it has been asked for,
+     * not that it is done. Saying "refreshed" and rendering the same
+     * numbers would be worse than saying nothing.
+     *
+     * Throttled with the same window RepoDownloads caches over, because
+     * inside that window a second fetch cannot change anything on screen.
+     * The guard is a cache key rather than a disabled button: two people
+     * looking at one project each hold their own page state, and only a
+     * shared one can stop the second press.
+     */
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('refresh')
+                ->label('Refresh from wordpress.org')
+                ->icon(Heroicon::OutlinedArrowPath)
+                ->color('gray')
+                ->visible(fn () => $this->record->isOnRepository() && ! $this->record->is_demo)
+                ->action(function () {
+                    $key = RefreshRepoStats::cooldownKey($this->record->id);
+
+                    if (Cache::has($key)) {
+                        Notification::make()
+                            ->title('Refreshed recently')
+                            ->body('The public record was fetched within the last '
+                                .(int) round(RefreshRepoStats::COOLDOWN_SECONDS / 60)
+                                .' minutes. wordpress.org will not have moved much, and the nightly capture runs at 03:00.')
+                            ->warning()
+                            ->send();
+
+                        return;
+                    }
+
+                    /*
+                     * Claimed before dispatch, not after. A queued job may
+                     * not start for a while, and a window in which the
+                     * button still works is a window in which an impatient
+                     * click queues a second identical fetch.
+                     */
+                    Cache::put($key, true, RefreshRepoStats::COOLDOWN_SECONDS);
+
+                    RefreshRepoStats::dispatch($this->record->id);
+
+                    Notification::make()
+                        ->title('Refresh queued')
+                        ->body("Fetching the public record for '{$this->record->wporg_slug}'. Reload in a moment to see it.")
+                        ->success()
+                        ->send();
+                }),
+        ];
     }
 
     protected function getHeaderWidgets(): array

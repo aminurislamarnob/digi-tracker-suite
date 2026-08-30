@@ -12,6 +12,7 @@ use App\Support\CurrentAccount;
 use Filament\Facades\Filament;
 use Filament\Support\Facades\FilamentView;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 use Tests\Concerns\FakesWordPressOrg;
 use Tests\TestCase;
@@ -40,6 +41,13 @@ class SpaNavigationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        /*
+         * Linking a project queues its first capture -- see
+         * Project::refreshRepositoryOnLink. Faked before the project is
+         * created, or the sync queue runs a real fetch in setUp.
+         */
+        Queue::fake();
 
         $this->fakeDownloadSummary();
 

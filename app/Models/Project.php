@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Jobs\RefreshRepoStats;
 use App\Models\Concerns\BelongsToAccount;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class Project extends Model
@@ -53,6 +55,59 @@ class Project extends Model
         // A project with no reason list would record deactivations it can
         // never label, so the SDK's seven are seeded on day one.
         static::created(fn (Project $project) => $project->seedDefaultReasons());
+
+        static::saved(fn (Project $project) => $project->refreshRepositoryOnLink());
+    }
+
+    /**
+     * Fetch the public record the moment a project is pointed at one.
+     *
+     * Without this a newly linked project waits until 03:00 for its first
+     * capture, and until then the repository page has live download totals
+     * at the top -- those come straight from wordpress.org -- above a chart
+     * reading an empty table. The page says "no downloads recorded", which
+     * is true and reads exactly like a bug.
+     *
+     * Fires on the link, not on every save: changing a project's name must
+     * not re-fetch, and neither must clearing the slug, which leaves
+     * nothing to fetch.
+     */
+    protected function refreshRepositoryOnLink(): void
+    {
+        /*
+         * Both conditions are needed. On insert Eloquent has nothing to
+         * compare against, so wasChanged() is false however the slug
+         * arrived; on update wasRecentlyCreated is false. Neither alone
+         * covers creating a project with a slug already filled in, which is
+         * the common case -- the field sits on the same form as the name.
+         */
+        if (! $this->wasRecentlyCreated && ! $this->wasChanged('wporg_slug')) {
+            return;
+        }
+
+        if ($this->is_demo || ! $this->isOnRepository()) {
+            return;
+        }
+
+        /*
+         * The same key the Refresh button claims, so the two throttle each
+         * other. Linking a project and immediately pressing Refresh is one
+         * fetch, not two -- and a slug corrected twice in a minute, which is
+         * what a typo looks like, does not become two full captures.
+         */
+        $key = RefreshRepoStats::cooldownKey($this->id);
+
+        if (! Cache::add($key, true, RefreshRepoStats::COOLDOWN_SECONDS)) {
+            return;
+        }
+
+        /*
+         * After the commit, because the worker reads this project back by
+         * id. Dispatched inside an uncommitted transaction the job can
+         * start before the row is visible, find nothing, and return having
+         * quietly done nothing at all.
+         */
+        RefreshRepoStats::dispatch($this->id)->afterCommit();
     }
 
     public function seedDefaultReasons(): void

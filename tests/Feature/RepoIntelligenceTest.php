@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\RefreshRepoStats;
 use App\Models\Account;
 use App\Models\Project;
 use App\Models\RepoDownload;
@@ -9,10 +10,13 @@ use App\Models\RepoKeyword;
 use App\Models\RepoRanking;
 use App\Models\RepoRelease;
 use App\Models\RepoSnapshot;
+use App\Services\RepoDownloads;
 use App\Services\RepoSnapshotter;
 use App\Support\CurrentAccount;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 /**
@@ -34,6 +38,13 @@ class RepoIntelligenceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        /*
+         * Linking a project queues its first capture -- see
+         * Project::refreshRepositoryOnLink. Faked before the project is
+         * created, or the sync queue runs a real fetch in setUp.
+         */
+        Queue::fake();
 
         $this->project = Project::factory()->for(Account::factory())->create([
             'slug' => 'metadata-viewer',
@@ -396,5 +407,166 @@ class RepoIntelligenceTest extends TestCase
         $this->assertSame(0, RepoSnapshot::count());
         $this->assertSame(0, RepoDownload::count());
         $this->assertSame(0, RepoRelease::count());
+    }
+
+    /* ---------------------------------------------------------------- */
+    /* Refreshing on demand */
+    /* ---------------------------------------------------------------- */
+
+    /**
+     * The queued refresh writes what the nightly command writes.
+     *
+     * It runs with no account set, as a worker does, so this doubles as the
+     * assertion that it reaches past the tenant scope -- a job that quietly
+     * captured nothing would look identical to one that never ran.
+     */
+    public function test_the_queued_refresh_captures_the_public_record(): void
+    {
+        $this->fakeRepository();
+
+        CurrentAccount::clear();
+
+        (new RefreshRepoStats($this->project->id))->handle(app(RepoSnapshotter::class));
+
+        CurrentAccount::set($this->project->account);
+
+        $this->assertSame(1, RepoSnapshot::count());
+        $this->assertSame(3, RepoDownload::count());
+    }
+
+    /**
+     * The live summary the headline reads is invalidated too.
+     *
+     * Without this the four largest figures on the page would keep serving
+     * a fifteen-minute-old cache while everything around them updated,
+     * which reads as the refresh having done nothing.
+     */
+    public function test_the_queued_refresh_drops_the_cached_download_summary(): void
+    {
+        $this->fakeRepository();
+
+        Cache::put(RepoDownloads::cacheKey('metadata-viewer'), ['all_time' => 1], 900);
+
+        (new RefreshRepoStats($this->project->id))->handle(app(RepoSnapshotter::class));
+
+        $this->assertFalse(Cache::has(RepoDownloads::cacheKey('metadata-viewer')));
+    }
+
+    /**
+     * A slug cleared between the button press and the worker picking the
+     * job up must not become a request for an empty slug.
+     */
+    public function test_the_queued_refresh_does_nothing_for_a_project_without_a_slug(): void
+    {
+        Http::fake();
+
+        $this->project->update(['wporg_slug' => null]);
+
+        (new RefreshRepoStats($this->project->id))->handle(app(RepoSnapshotter::class));
+
+        Http::assertNothingSent();
+        $this->assertSame(0, RepoSnapshot::count());
+    }
+
+    /* ---------------------------------------------------------------- */
+    /* Linking a project */
+    /* ---------------------------------------------------------------- */
+
+    /**
+     * A project linked mid-afternoon must not wait until 03:00.
+     *
+     * This is the case that produced an empty chart under populated cards:
+     * the four totals at the top of the repository page come live from
+     * wordpress.org, the chart reads a table nothing had written to yet,
+     * and the difference reads as a broken chart rather than a project
+     * added an hour ago.
+     */
+    public function test_linking_a_project_queues_its_first_capture(): void
+    {
+        Queue::fake();
+
+        $project = Project::factory()->for(Account::factory())->create([
+            'wporg_slug' => 'newly-linked',
+        ]);
+
+        Queue::assertPushed(
+            RefreshRepoStats::class,
+            fn (RefreshRepoStats $job) => $job->projectId === $project->id,
+        );
+    }
+
+    /** Setting the slug on a project that had none is the same event. */
+    public function test_adding_a_slug_later_queues_the_capture_too(): void
+    {
+        $project = Project::factory()->for(Account::factory())->create(['wporg_slug' => null]);
+
+        Queue::fake();
+
+        $project->update(['wporg_slug' => 'linked-later']);
+
+        Queue::assertPushed(RefreshRepoStats::class);
+    }
+
+    /**
+     * Every other save must be silent.
+     *
+     * Renaming a project is not news from wordpress.org, and a capture is
+     * four requests against a public API we are a guest on. A hook that
+     * fired on any save would turn a typo fix into a fetch.
+     */
+    public function test_an_unrelated_edit_queues_nothing(): void
+    {
+        $project = Project::factory()->for(Account::factory())->create(['wporg_slug' => 'settled']);
+
+        Queue::fake();
+
+        $project->update(['name' => 'Renamed']);
+
+        Queue::assertNothingPushed();
+    }
+
+    /** Unlinking leaves nothing to fetch. */
+    public function test_clearing_the_slug_queues_nothing(): void
+    {
+        $project = Project::factory()->for(Account::factory())->create(['wporg_slug' => 'settled']);
+
+        Queue::fake();
+
+        $project->update(['wporg_slug' => null]);
+
+        Queue::assertNothingPushed();
+    }
+
+    /** Demo projects are excluded from the nightly run, and from this. */
+    public function test_a_demo_project_queues_nothing(): void
+    {
+        Queue::fake();
+
+        Project::factory()->for(Account::factory())->create([
+            'wporg_slug' => 'demo-plugin',
+            'is_demo' => true,
+        ]);
+
+        Queue::assertNothingPushed();
+    }
+
+    /**
+     * A slug corrected twice in a minute is one fetch, not two.
+     *
+     * The link shares the button's cooldown key, so a typo fixed straight
+     * away -- which is what a second change inside a minute looks like --
+     * does not become a second full capture.
+     */
+    public function test_a_slug_corrected_immediately_does_not_queue_twice(): void
+    {
+        Queue::fake();
+
+        $project = Project::factory()->for(Account::factory())->create([
+            'wporg_slug' => 'typo-slug',
+        ]);
+
+        $project->update(['wporg_slug' => 'corrected-slug']);
+
+        Queue::assertPushed(RefreshRepoStats::class, 1);
     }
 }

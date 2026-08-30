@@ -33,6 +33,18 @@ class RepoDownloads
      */
     public const CACHE_SECONDS = 900;
 
+    /**
+     * Named here because a manual refresh has to invalidate it too.
+     *
+     * Keyed on the wordpress.org slug rather than the project, since that
+     * is what the answer actually depends on -- two projects pointed at one
+     * slug are asking the same question and deserve the same cached reply.
+     */
+    public static function cacheKey(string $slug): string
+    {
+        return "wporg:downloads:{$slug}";
+    }
+
     public function __construct(
         protected WordPressOrg $repository,
         protected RepoAnalytics $analytics,
@@ -50,7 +62,7 @@ class RepoDownloads
         }
 
         $summary = Cache::remember(
-            "wporg:downloads:{$project->wporg_slug}",
+            self::cacheKey($project->wporg_slug),
             self::CACHE_SECONDS,
             fn () => $this->repository->downloadSummary($project->wporg_slug),
         );
@@ -70,7 +82,7 @@ class RepoDownloads
          * load tries again -- fifteen minutes of stale numbers after a
          * blip would be a self-inflicted outage.
          */
-        Cache::forget("wporg:downloads:{$project->wporg_slug}");
+        Cache::forget(self::cacheKey($project->wporg_slug));
 
         $snapshot = $this->analytics->latestSnapshot($project);
 
