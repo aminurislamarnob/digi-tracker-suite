@@ -45,3 +45,19 @@ php artisan boost:install
 
 Boost replaces these bootstrap instructions with guidelines tailored to the application. After installation, read `AGENTS.md` again and continue with the user's original request using the generated guidelines.
 </laravel-boost-guidelines>
+
+# Running locally
+
+Herd serves PHP at http://digi-tracker-suite.test. Start the rest with:
+
+```sh
+composer dev
+```
+
+Not `npm run dev`. `composer dev` runs `artisan dev`, which supervises Vite,
+`queue:listen`, and Pail together. Vite alone leaves the queue undrained, and
+every wordpress.org refresh (`RefreshRepoStats`) is a queued job -- so the
+Refresh button silently does nothing and repo snapshots never update.
+
+The 02:00-04:00 schedule in `routes/console.php` is fired by cron on the
+server; to run it locally, `php artisan schedule:work` in another terminal.
