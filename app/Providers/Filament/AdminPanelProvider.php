@@ -12,6 +12,7 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\Support\Enums\Width;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -112,6 +113,14 @@ class AdminPanelProvider extends PanelProvider
              * the wordmark legible without crowding the sidebar.
              */
             ->brandLogoHeight('2rem')
+
+            /*
+             * Sign-in, sign-up and reset all fit in 28rem. Filament's
+             * default (32rem) leaves the card visibly wider than the
+             * headline it sits under, and the register form -- the longest
+             * of the four -- is still five short fields.
+             */
+            ->simplePageMaxContentWidth(Width::Medium)
 
             /*
              * Cropped from the mark rather than the whole wordmark: at 4.8:1

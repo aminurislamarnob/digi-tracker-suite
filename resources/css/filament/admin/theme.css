@@ -1,5 +1,8 @@
 @import '../../../../vendor/filament/filament/resources/css/theme.css';
 
+/* Sign in, sign up and password reset. */
+@import './auth.css';
+
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
 @source '../../../../resources/views/vendor/filament-panels/**/*';

@@ -1,0 +1,177 @@
+/*
+ * The auth pages: sign in, sign up, forgot password, reset password.
+ *
+ * The markup is resources/views/vendor/filament-panels/components/layout/
+ * simple.blade.php. This file is the shape of that page -- two columns
+ * from lg, a headline over the card, the clip on the right -- and nothing
+ * else. Colours and type are the panel's own: whatever Filament renders
+ * for the visitor's theme, in the panel's font, with the brand blue on
+ * the button. Nothing here reaches the panel proper.
+ *
+ * These rules are unlayered and Filament's are in @layer components, so
+ * they win on that alone; specificity is kept low on purpose.
+ */
+
+.fi-simple-layout {
+    --auth-radius: 1.5rem;
+
+    /* Two columns from lg; one, with the clip gone, below. */
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    min-height: 100dvh;
+    padding: 5.5rem 1rem 2.5rem;
+    position: relative;
+}
+
+@media (min-width: 1024px) {
+    .fi-simple-layout {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 3rem;
+        padding: 3rem;
+    }
+}
+
+@media (min-width: 1280px) {
+    .fi-simple-layout {
+        grid-template-columns: minmax(0, 11fr) minmax(0, 9fr);
+        gap: 4rem;
+    }
+}
+
+/* ---- Brand, top-left -------------------------------------------------- */
+
+.fi-simple-layout .fi-auth-brand {
+    position: absolute;
+    top: 1.5rem;
+    inset-inline-start: 1.25rem;
+    display: inline-flex;
+    border-radius: 0.375rem;
+    outline: none;
+}
+
+.fi-simple-layout .fi-auth-brand:focus-visible {
+    @apply outline-2 outline-offset-4 outline-primary-600 dark:outline-primary-500;
+}
+
+@media (min-width: 1024px) {
+    .fi-simple-layout .fi-auth-brand {
+        top: 2rem;
+        inset-inline-start: 2.5rem;
+    }
+}
+
+/* ---- Left column: hero + card ----------------------------------------- */
+
+.fi-simple-layout .fi-simple-main-ctn {
+    flex-direction: column;
+    /*
+     * `safe`: when the column is taller than the viewport -- the register
+     * form on a laptop -- plain centring pushes the overflow out of the
+     * top, where no amount of scrolling reaches the headline or the logo.
+     */
+    justify-content: safe center;
+    gap: 2.25rem;
+}
+
+/*
+ * Clearance for the brand in the corner, on the column rather than the
+ * wrapper so the clip's column keeps the wrapper's 3rem all round. Equal
+ * top and bottom, so a short form still centres on the viewport.
+ */
+@media (min-width: 1024px) {
+    .fi-simple-layout .fi-simple-main-ctn {
+        padding-block: 3.5rem;
+    }
+}
+
+/* Short viewports: keep the whole sign-up form reachable without a scroll. */
+@media (max-height: 840px) {
+    .fi-simple-layout .fi-simple-main-ctn {
+        gap: 1.5rem;
+    }
+
+    .fi-simple-layout .fi-auth-hero-heading {
+        font-size: clamp(2rem, 3vw + 0.5rem, 2.75rem);
+    }
+}
+
+.fi-simple-layout .fi-auth-hero {
+    max-width: 34rem;
+    text-align: center;
+    text-wrap: balance;
+}
+
+.fi-simple-layout .fi-auth-hero-heading {
+    @apply font-semibold tracking-tight text-gray-950 dark:text-white;
+
+    font-size: clamp(2.25rem, 3.5vw + 0.5rem, 3.5rem);
+    line-height: 1.05;
+}
+
+.fi-simple-layout .fi-auth-hero-subheading {
+    @apply text-gray-500 dark:text-gray-400;
+
+    margin-top: 0.75rem;
+    font-size: clamp(1rem, 0.5vw + 0.8rem, 1.125rem);
+    line-height: 1.5;
+}
+
+/* The card: Filament's own surface, sized to sit under the headline. */
+.fi-simple-layout .fi-simple-main {
+    margin: 0;
+    padding: 2rem 1.5rem;
+    border-radius: var(--auth-radius);
+}
+
+@media (min-width: 640px) {
+    .fi-simple-layout .fi-simple-main {
+        padding: 2.25rem 2rem;
+    }
+}
+
+/* The brand is already top-left; a second copy in the card is clutter. */
+.fi-simple-layout .fi-simple-header .fi-logo {
+    display: none;
+}
+
+/* Every field on these four pages is required; the mark says nothing. */
+.fi-simple-layout .fi-fo-field-label-required-mark {
+    display: none;
+}
+
+/* A taller submit, to match the weight of the headline above it. */
+.fi-simple-layout .fi-sc-actions .fi-btn.fi-color-primary {
+    padding-block: 0.75rem;
+    border-radius: 0.75rem;
+}
+
+/* ---- Right column: the clip ------------------------------------------- */
+
+.fi-simple-layout .fi-auth-visual {
+    display: none;
+}
+
+@media (min-width: 1024px) {
+    .fi-simple-layout .fi-auth-visual {
+        @apply bg-gray-100 dark:bg-gray-900;
+
+        display: block;
+        position: sticky;
+        top: 3rem;
+        justify-self: center;
+        height: calc(100dvh - 6rem);
+        max-height: 60rem;
+        aspect-ratio: 4 / 5;
+        max-width: 100%;
+        overflow: hidden;
+        border-radius: var(--auth-radius);
+    }
+
+    .fi-simple-layout .fi-auth-visual video {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+}
