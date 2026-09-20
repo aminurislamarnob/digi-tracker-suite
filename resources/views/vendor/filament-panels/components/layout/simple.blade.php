@@ -19,9 +19,16 @@
     than Filament's single centred card. Everything the upstream layout
     renders is still rendered, in the same order, so the render hooks and
     the signed-in header (edit-profile uses this layout too) keep working.
-    The additions are the brand link, the hero, and the aside. Colours
-    and type are the panel's own, in whichever theme the visitor chose;
-    the layout lives in resources/css/filament/admin/auth.css.
+    The additions are the brand link, the hero, the aside, and the head
+    script below. Type is the panel's; the colours are in
+    resources/css/filament/admin/auth.css.
+
+    Always dark, whatever theme the visitor has chosen for the panel.
+    The class goes on <html> from the head, before anything paints, so
+    Filament's dark variants apply to the whole document -- the toasts
+    outside the wrapper included. These pages are full loads either
+    side, so it never follows a visitor into the panel, where their own
+    preference stands: that preference is read here, never written.
 --}}
 <x-filament-panels::layout.base :livewire="$livewire">
     @props([
@@ -29,6 +36,24 @@
         'heading' => null,
         'subheading' => null,
     ])
+
+    @push('styles')
+        <script>
+            document.documentElement.classList.add('dark')
+
+            /*
+             * Filament keeps the theme in an Alpine store and mirrors it
+             * onto <html>, so the store has to say dark as well or the
+             * mirror takes the class straight back off. Filament's own
+             * alpine:init listener is what fills the store from the
+             * visitor's preference, and it is registered after this one,
+             * so the override is queued to run once it has.
+             */
+            document.addEventListener('alpine:init', () =>
+                queueMicrotask(() => window.Alpine.store('theme', 'dark')),
+            )
+        </script>
+    @endpush
 
     <div class="fi-simple-layout">
         @if (($hasTopbar ?? true) && filament()->auth()->check())

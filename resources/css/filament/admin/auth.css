@@ -4,8 +4,10 @@
  * The markup is resources/views/vendor/filament-panels/components/layout/
  * simple.blade.php. This file is the shape of that page -- two columns
  * from lg, a headline over the card, the clip on the right -- and its
- * colour, which is wordpress.org's. Type is the panel's, set in theme.css.
- * Nothing here reaches the panel proper, which keeps its own blue.
+ * colour: always dark, on the panel's neutrals from theme.css, with
+ * wordpress.org's blueberry as the accent. Type is the panel's, also set
+ * in theme.css. Nothing here reaches the panel proper, which keeps its
+ * own blue and its light/dark toggle.
  *
  * These rules are unlayered and Filament's are in @layer components, so
  * they win on that alone; specificity is kept low on purpose.
@@ -13,13 +15,12 @@
 
 .fi-simple-layout {
     /*
-     * wordpress.org's palette, in Filament's slots.
+     * wordpress.org's blue, in Filament's primary slots.
      *
-     * Filament components colour themselves from --primary-* and --gray-*,
-     * resolved where they are used, so redefining the two scales on this
-     * wrapper recolours every button, ring, link and label inside it
-     * without touching any of them. The values are wordpress.org's own
-     * design tokens -- blueberry, charcoal, light grey -- placed at the
+     * Filament components colour themselves from --primary-*, resolved
+     * where it is used, so redefining the scale on this wrapper recolours
+     * every button, ring and link inside it without touching any of them.
+     * The values are wordpress.org's own blueberry tokens, placed at the
      * shade Filament reaches for in each role, with the gaps interpolated.
      */
     --primary-50: #f5f7ff;
@@ -34,21 +35,11 @@
     --primary-900: #172a8f;
     --primary-950: #0f1c5e;
 
-    --gray-50: #f6f6f6; /* light grey 2 */
-    --gray-100: #ececec;
-    --gray-200: #d9d9d9; /* light grey 1: borders */
-    --gray-300: #c3c5c9;
-    --gray-400: #979aa1; /* charcoal-5: muted, dark theme */
-    --gray-500: #656a71; /* charcoal-4: muted */
-    --gray-600: #50555c;
-    --gray-700: #40464d; /* charcoal-3 */
-    --gray-800: #23282d; /* charcoal-2: the card, dark theme */
-    --gray-900: #1e1e1e; /* charcoal-1: the page, dark theme */
-    --gray-950: #1a1919; /* charcoal-0: text */
-
     --auth-radius: 1.5rem;
 
-    @apply bg-white text-gray-950 dark:bg-gray-900 dark:text-white;
+    @apply bg-gray-950 text-white;
+
+    color-scheme: dark;
 
     /* Two columns from lg; one, with the clip gone, below. */
     display: grid;
@@ -59,12 +50,9 @@
     position: relative;
 }
 
-/*
- * Overscroll shows body, which sits outside the wrapper and its remapped
- * scales -- so the same two surfaces, spelled out.
- */
+/* Overscroll shows body, which sits outside the wrapper. */
 .fi-body:has(> .fi-simple-layout) {
-    @apply bg-white dark:bg-[#1e1e1e];
+    @apply bg-gray-950;
 }
 
 @media (min-width: 1024px) {
@@ -94,7 +82,7 @@
 }
 
 .fi-simple-layout .fi-auth-brand:focus-visible {
-    @apply outline-2 outline-offset-4 outline-primary-600 dark:outline-primary-500;
+    @apply outline-2 outline-offset-4 outline-primary-500;
 }
 
 @media (min-width: 1024px) {
@@ -146,7 +134,7 @@
 }
 
 .fi-simple-layout .fi-auth-hero-heading {
-    @apply font-semibold tracking-tight text-gray-950 dark:text-white;
+    @apply font-semibold tracking-tight text-white;
 
     font-family: var(--font-outfit);
     font-size: clamp(2.25rem, 3.5vw + 0.5rem, 3.5rem);
@@ -154,19 +142,16 @@
 }
 
 .fi-simple-layout .fi-auth-hero-subheading {
-    @apply text-gray-500 dark:text-gray-400;
+    @apply text-gray-400;
 
     margin-top: 0.75rem;
     font-size: clamp(1rem, 0.5vw + 0.8rem, 1.125rem);
     line-height: 1.5;
 }
 
-/*
- * The card: white with a light-grey hairline, as wordpress.org draws its
- * cards; charcoal-2 on charcoal-1 in the dark theme.
- */
+/* The card: the panel's near-black surface, with a hairline, on the black page. */
 .fi-simple-layout .fi-simple-main {
-    @apply bg-white shadow-none ring-gray-200 dark:bg-gray-800 dark:ring-gray-700;
+    @apply bg-gray-900 shadow-none ring-gray-700;
 
     margin: 0;
     padding: 2rem 1.5rem;
@@ -195,12 +180,12 @@
 }
 
 /*
- * Fields: a light-grey hairline at rest rather than Filament's tinted
- * ring. Only at rest -- focus-within sets the same variable to blueberry
- * from a layered rule, and this unlayered one would otherwise beat it.
+ * Fields: a hairline at rest rather than Filament's translucent ring.
+ * Only at rest -- focus-within sets the same variable to blueberry from
+ * a layered rule, and this unlayered one would otherwise beat it.
  */
 .fi-simple-layout .fi-input-wrp:not(:focus-within) {
-    @apply ring-gray-200 dark:ring-gray-700;
+    @apply ring-gray-700;
 }
 
 /*
@@ -233,7 +218,7 @@
 
 @media (min-width: 1024px) {
     .fi-simple-layout .fi-auth-visual {
-        @apply bg-gray-100 dark:bg-gray-900;
+        @apply bg-gray-900;
 
         display: block;
         position: sticky;

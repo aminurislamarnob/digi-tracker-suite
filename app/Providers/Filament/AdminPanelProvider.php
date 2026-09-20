@@ -5,6 +5,7 @@ namespace App\Providers\Filament;
 use App\Filament\Pages\Auth\Register;
 use App\Http\Middleware\SetCurrentAccount;
 use App\Models\Account;
+use Filament\Enums\ThemeMode;
 use Filament\FontProviders\LocalFontProvider;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -146,6 +147,14 @@ class AdminPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::hex('#195CE3'),
             ])
+
+            /*
+             * Dark unless the visitor has chosen otherwise. The toggle stays;
+             * this is only what a first visit gets, and what the dark theme
+             * looks like is set in the theme stylesheet -- a black page and
+             * neutral greys, after openai.com/codex -- not here.
+             */
+            ->defaultThemeMode(ThemeMode::Dark)
 
             /*
              * A custom theme, so Tailwind utilities work in our own Blade
