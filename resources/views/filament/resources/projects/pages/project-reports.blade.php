@@ -19,7 +19,7 @@
                 </p>
             @else
                 <div class="flex items-baseline gap-3">
-                    <span class="text-3xl font-semibold tabular-nums text-gray-950 dark:text-white">
+                    <span class="font-outfit text-3xl font-semibold tabular-nums text-gray-950 dark:text-white">
                         {{ number_format($laggards['total']) }}
                     </span>
                     <span class="text-sm text-gray-500 dark:text-gray-400">
@@ -57,7 +57,7 @@
             </x-slot>
 
             <div class="flex items-baseline gap-3">
-                <span class="text-3xl font-semibold tabular-nums text-gray-950 dark:text-white">
+                <span class="font-outfit text-3xl font-semibold tabular-nums text-gray-950 dark:text-white">
                     {{ number_format($silent) }}
                 </span>
                 <span class="text-sm text-gray-500 dark:text-gray-400">

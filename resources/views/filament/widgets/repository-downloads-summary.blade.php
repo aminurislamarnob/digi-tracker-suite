@@ -22,7 +22,7 @@
         <div class="grid grid-cols-2 gap-6 xl:grid-cols-4">
             <x-filament::section class="text-center">
                 <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Today</p>
-                <p class="mt-1 text-4xl font-bold tabular-nums text-gray-950 dark:text-white">
+                <p class="mt-1 font-outfit text-4xl font-bold tabular-nums text-gray-950 dark:text-white">
                     {{ $figures['today'] !== null ? number_format($figures['today']) : '—' }}
                 </p>
                 <p class="mt-2 text-xs text-amber-600 dark:text-amber-400">
@@ -33,7 +33,7 @@
 
             <x-filament::section class="text-center">
                 <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Yesterday</p>
-                <p class="mt-1 text-4xl font-bold tabular-nums text-gray-950 dark:text-white">
+                <p class="mt-1 font-outfit text-4xl font-bold tabular-nums text-gray-950 dark:text-white">
                     {{ $figures['yesterday'] !== null ? number_format($figures['yesterday']) : '—' }}
                 </p>
                 <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
@@ -43,7 +43,7 @@
 
             <x-filament::section class="text-center">
                 <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Last 7 days</p>
-                <p class="mt-1 text-4xl font-bold tabular-nums text-gray-950 dark:text-white">
+                <p class="mt-1 font-outfit text-4xl font-bold tabular-nums text-gray-950 dark:text-white">
                     {{ $figures['lastWeek'] !== null ? number_format($figures['lastWeek']) : '—' }}
                 </p>
                 <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
@@ -54,7 +54,7 @@
 
             <x-filament::section class="text-center">
                 <p class="text-sm font-medium text-gray-500 dark:text-gray-400">All time</p>
-                <p class="mt-1 text-4xl font-bold tabular-nums text-gray-950 dark:text-white">
+                <p class="mt-1 font-outfit text-4xl font-bold tabular-nums text-gray-950 dark:text-white">
                     {{ $figures['allTime'] !== null ? number_format($figures['allTime']) : '—' }}
                 </p>
                 <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">

@@ -1,7 +1,47 @@
 @import '../../../../vendor/filament/filament/resources/css/theme.css';
 
+/*
+ * The brand's two typefaces, self-hosted. Variable files, so any weight
+ * is one request per script rather than one per weight, and the family
+ * names match the public site's --font-outfit and --font-albert-sans
+ * exactly. Albert Sans is the panel font -- AdminPanelProvider names it,
+ * with the local provider so Filament stops fetching Inter from Bunny.
+ */
+@import '@fontsource-variable/outfit';
+@import '@fontsource-variable/albert-sans';
+
 /* Sign in, sign up and password reset. */
 @import './auth.css';
+
+/*
+ * In @theme so each is both a variable and a utility: `font-outfit` on
+ * an element in a Blade view, var(--font-outfit) in a rule here.
+ */
+@theme {
+    --font-albert-sans: 'Albert Sans Variable', Verdana, sans-serif;
+    --font-outfit: 'Outfit Variable', 'Albert Sans Variable', sans-serif;
+}
+
+/*
+ * Titles in Outfit; everything else inherits Albert Sans from <html>.
+ *
+ * "Title" here is what Filament sets large and heavy: page, section,
+ * modal and table headings, the empty state, the auth card, and the
+ * stat value on an overview widget -- a dashboard's display layer, so
+ * the custom widgets' big figures carry `font-outfit` too and the two
+ * kinds of card agree. Not labels, not navigation, not table cells.
+ */
+.fi-header-heading,
+.fi-section-header-heading,
+.fi-modal-heading,
+.fi-ta-header-heading,
+.fi-ta-empty-state-heading,
+.fi-empty-state-heading,
+.fi-simple-header-heading,
+.fi-account-widget-heading,
+.fi-wi-stats-overview-stat-value {
+    font-family: var(--font-outfit);
+}
 
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';

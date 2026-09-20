@@ -32,7 +32,7 @@
         <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
             <x-filament::section class="text-center">
                 <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Downloads</p>
-                <p class="mt-1 text-4xl font-bold tabular-nums text-gray-950 dark:text-white">
+                <p class="mt-1 font-outfit text-4xl font-bold tabular-nums text-gray-950 dark:text-white">
                     {{ $headline['downloads'] !== null ? number_format($headline['downloads']) : '—' }}
                 </p>
                 <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
@@ -48,7 +48,7 @@
 
             <x-filament::section class="text-center">
                 <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Installations</p>
-                <p class="mt-1 text-4xl font-bold tabular-nums text-gray-950 dark:text-white">
+                <p class="mt-1 font-outfit text-4xl font-bold tabular-nums text-gray-950 dark:text-white">
                     {{ $headline['publicInstalls'] !== null ? number_format($headline['publicInstalls']) : '—' }}
                 </p>
                 <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
@@ -60,10 +60,10 @@
             <x-filament::section class="text-center">
                 <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Rating</p>
                 @if ($headline['rating'] === null || ! $headline['numRatings'])
-                    <p class="mt-1 text-4xl font-bold text-gray-400 dark:text-gray-500">—</p>
+                    <p class="mt-1 font-outfit text-4xl font-bold text-gray-400 dark:text-gray-500">—</p>
                     <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">no ratings yet</p>
                 @else
-                    <p class="mt-1 text-4xl font-bold tabular-nums text-gray-950 dark:text-white">
+                    <p class="mt-1 font-outfit text-4xl font-bold tabular-nums text-gray-950 dark:text-white">
                         {{ $headline['rating'] }}%
                     </p>
                     <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
@@ -81,13 +81,13 @@
                 <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Conversion</p>
                 @if ($headline['conversion'] === null)
                     {{-- Never 0%: with either half missing there is no ratio. --}}
-                    <p class="mt-1 text-4xl font-bold text-gray-400 dark:text-gray-500">—</p>
+                    <p class="mt-1 font-outfit text-4xl font-bold text-gray-400 dark:text-gray-500">—</p>
                     <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
                         needs both a download count and an install figure
                     </p>
                 @else
                     <p @class([
-                        'mt-1 text-4xl font-bold tabular-nums',
+                        'mt-1 font-outfit text-4xl font-bold tabular-nums',
                         'text-success-600 dark:text-success-400' => $headline['conversionColour'] === 'success',
                         'text-warning-600 dark:text-warning-400' => $headline['conversionColour'] === 'warning',
                         'text-danger-600 dark:text-danger-400' => $headline['conversionColour'] === 'danger',

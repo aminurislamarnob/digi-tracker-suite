@@ -5,6 +5,7 @@ namespace App\Providers\Filament;
 use App\Filament\Pages\Auth\Register;
 use App\Http\Middleware\SetCurrentAccount;
 use App\Models\Account;
+use Filament\FontProviders\LocalFontProvider;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -113,6 +114,15 @@ class AdminPanelProvider extends PanelProvider
              * the wordmark legible without crowding the sidebar.
              */
             ->brandLogoHeight('2rem')
+
+            /*
+             * The public site's typeface, and the local provider so
+             * Filament emits no <link> for it: the @font-face rules come
+             * from the theme, which bundles the variable font files, and
+             * Outfit for titles is applied there too. Without this the
+             * panel would fetch Inter from Bunny Fonts on every page.
+             */
+            ->font('Albert Sans Variable', provider: LocalFontProvider::class)
 
             /*
              * Sign-in, sign-up and reset all fit in 28rem. Filament's
