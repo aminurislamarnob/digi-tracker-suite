@@ -43,7 +43,25 @@ class AuthenticationTest extends TestCase
 
     public function test_the_login_screen_is_reachable(): void
     {
-        $this->get('/admin/login')->assertOk();
+        $this->get('/login')->assertOk();
+    }
+
+    /**
+     * The auth pages live at the root, and everything that hands out one
+     * of their addresses must agree -- a guarded page most of all, since
+     * that is how most people arrive at sign-in. Filament's own copies
+     * under /admin are kept only to forward.
+     */
+    public function test_the_auth_pages_live_at_the_root(): void
+    {
+        $this->assertSame(url('/login'), filament()->getLoginUrl());
+        $this->assertSame(url('/register'), filament()->getRegistrationUrl());
+        $this->assertSame(url('/password-reset/request'), filament()->getRequestPasswordResetUrl());
+
+        $this->get('/admin')->assertRedirect('/login');
+        $this->get('/admin/login')->assertRedirect('/login');
+        $this->get('/admin/register')->assertRedirect('/register');
+        $this->get('/admin/password-reset/request')->assertRedirect('/password-reset/request');
     }
 
     public function test_a_member_can_sign_in(): void
@@ -88,7 +106,7 @@ class AuthenticationTest extends TestCase
 
     public function test_the_registration_screen_is_reachable(): void
     {
-        $this->get('/admin/register')->assertOk();
+        $this->get('/register')->assertOk();
     }
 
     /**
@@ -229,8 +247,10 @@ class AuthenticationTest extends TestCase
             // panel's own catch-all, which sends a guest to sign in --
             // whatever it answers, it is not a registration form.
             $this->assertFalse(app('router')->has('filament.admin.auth.register'));
+            $this->assertFalse(app('router')->has('register'));
 
             $this->get('/admin/register')->assertRedirect();
+            $this->get('/register')->assertNotFound();
         } finally {
             unset($_ENV['TELEMETRY_REGISTRATION'], $_SERVER['TELEMETRY_REGISTRATION']);
             putenv('TELEMETRY_REGISTRATION');
@@ -243,7 +263,7 @@ class AuthenticationTest extends TestCase
 
     public function test_the_forgotten_password_screen_is_reachable(): void
     {
-        $this->get('/admin/password-reset/request')->assertOk();
+        $this->get('/password-reset/request')->assertOk();
     }
 
     public function test_a_reset_link_is_sent(): void
@@ -257,7 +277,19 @@ class AuthenticationTest extends TestCase
             ->call('request')
             ->assertHasNoFormErrors();
 
-        Notification::assertSentTo($user, ResetPasswordNotification::class);
+        /*
+         * The link in the mail is the whole point of the mail. It must be
+         * at the root, and it must be signed such that the page at the
+         * root accepts it -- a link signed for one path is refused at
+         * another, so this is the one place the two halves can disagree.
+         */
+        Notification::assertSentTo($user, ResetPasswordNotification::class, function (ResetPasswordNotification $notification): bool {
+            $this->assertStringStartsWith(url('/password-reset/reset?'), $notification->url);
+
+            $this->get($notification->url)->assertOk();
+
+            return true;
+        });
     }
 
     /**

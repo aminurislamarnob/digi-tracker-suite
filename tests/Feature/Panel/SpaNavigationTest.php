@@ -99,11 +99,9 @@ class SpaNavigationTest extends TestCase
     {
         $exceptions = Filament::getPanel('admin')->getSpaUrlExceptions();
 
-        foreach (['login', 'logout', 'register'] as $route) {
-            $this->assertContains(url("/admin/{$route}"), $exceptions);
+        foreach (['/login', '/register', '/password-reset/*', '/admin/logout'] as $path) {
+            $this->assertContains(url($path), $exceptions);
         }
-
-        $this->assertContains(url('/admin/password-reset/*'), $exceptions);
     }
 
     /**
@@ -116,7 +114,7 @@ class SpaNavigationTest extends TestCase
         $this->get(ProjectResource::getUrl('index', tenant: $this->account))->assertOk();
 
         $this->assertFalse(FilamentView::hasSpaMode(url('/admin/logout')));
-        $this->assertFalse(FilamentView::hasSpaMode(url('/admin/password-reset/request')));
+        $this->assertFalse(FilamentView::hasSpaMode(url('/password-reset/request')));
 
         // A page inside the panel still navigates client-side.
         $this->assertTrue(FilamentView::hasSpaMode(

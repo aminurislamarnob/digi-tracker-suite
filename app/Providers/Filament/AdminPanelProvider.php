@@ -2,10 +2,13 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\AdminPanel;
 use App\Filament\Pages\Auth\Register;
+use App\Http\Middleware\ForwardPanelAuthRoutes;
 use App\Http\Middleware\SetCurrentAccount;
 use App\Models\Account;
 use Filament\Enums\ThemeMode;
+use Filament\Facades\Filament;
 use Filament\FontProviders\LocalFontProvider;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -25,6 +28,17 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class AdminPanelProvider extends PanelProvider
 {
+    /*
+     * Our own Panel subclass rather than Filament's, for one purpose:
+     * where the auth pages live. See App\Filament\AdminPanel.
+     */
+    public function register(): void
+    {
+        Filament::registerPanel(
+            fn (): Panel => $this->panel(AdminPanel::make()),
+        );
+    }
+
     public function panel(Panel $panel): Panel
     {
         return $panel
@@ -38,7 +52,10 @@ class AdminPanelProvider extends PanelProvider
              * Filament ships all three; what is ours is the registration
              * page, which has to create an account alongside the user --
              * see App\Filament\Pages\Auth\Register for why signing up
-             * without one lands somebody straight on a refusal.
+             * without one lands somebody straight on a refusal -- and the
+             * addresses, which are /login, /register and /password-reset
+             * rather than the same under /admin; App\Filament\AdminPanel
+             * says so, and routes/web.php mounts them there.
              *
              * Registration is behind a config flag because it creates a
              * tenant, so leaving it open on a public host lets a stranger
@@ -87,10 +104,10 @@ class AdminPanelProvider extends PanelProvider
              * either way.
              */
             ->spaUrlExceptions(fn (): array => [
-                url('/admin/login'),
+                url('/login'),
+                url('/register'),
+                url('/password-reset/*'),
                 url('/admin/logout'),
-                url('/admin/register'),
-                url('/admin/password-reset/*'),
             ])
 
             /*
@@ -196,6 +213,7 @@ class AdminPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
+                ForwardPanelAuthRoutes::class,
             ])
             ->authMiddleware([
                 Authenticate::class,
