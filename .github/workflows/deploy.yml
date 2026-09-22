@@ -14,6 +14,9 @@ name: Deploy
 on:
   push:
     branches: [main]
+  # Tests only on a pull request -- the deploy job guards itself below.
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 # Never two deploys at once, and never cancel one in flight: the script is
@@ -71,6 +74,12 @@ jobs:
   deploy:
     needs: test
     runs-on: ubuntu-latest
+
+    # Load-bearing. The `pull_request` trigger above runs this whole workflow,
+    # and this repository is public: a pull request from a branch here would
+    # otherwise reach the deploy credentials and push to production before
+    # anybody had read the diff. Tests run on a pull request; deploys do not.
+    if: github.event_name != 'pull_request'
 
     # Add required reviewers to this environment in repo settings if you want
     # a human to approve each production deploy.
