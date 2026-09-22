@@ -55,8 +55,22 @@ jobs:
           extensions: mbstring, pdo_mysql, bcmath, intl, zip, gd
           coverage: none
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
+
+      # The panel tests render Blade, and every Filament layout reaches for
+      # the Vite manifest. Without a build the whole Panel suite fails on a
+      # missing file rather than on anything it meant to assert -- which is
+      # also what `composer setup` does locally, for the same reason.
+      - name: Build assets
+        run: |
+          npm ci
+          npm run build
 
       - name: Prepare environment
         run: |
