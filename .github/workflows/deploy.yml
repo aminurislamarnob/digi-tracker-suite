@@ -72,9 +72,20 @@ jobs:
           npm ci
           npm run build
 
+      # TELEMETRY_REGISTRATION is dropped from the test .env deliberately.
+      #
+      # .env.example pins it true, which is right for running the application
+      # and wrong for testing it: AuthenticationTest closes registration by
+      # setting the variable and rebuilding the app, and a value pinned in
+      # .env leaves the suite unable to exercise the closed state at all.
+      #
+      # Removing the pin is what a developer's own .env looks like, so CI and
+      # a local run agree. Nothing about how the setting behaves in
+      # production changes -- there .env is the only source, and it is read.
       - name: Prepare environment
         run: |
           cp .env.example .env
+          sed -i '/^TELEMETRY_REGISTRATION=/d' .env
           php artisan key:generate
 
       - name: Run tests
