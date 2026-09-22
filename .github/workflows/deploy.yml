@@ -113,10 +113,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
+
+      # vendor/ is needed to BUILD, even though it is never uploaded.
+      #
+      # resources/css/filament/admin/theme.css imports Filament's own stylesheet
+      # out of vendor/, so Tailwind cannot resolve it and the build dies before
+      # writing a manifest. The host installs its own vendor/ -- deploy.sh
+      # excludes ours from the rsync -- so this copy exists purely to be read
+      # by the CSS build and then thrown away with the runner.
+      - name: Install PHP dependencies
+        run: composer install --no-dev --no-interaction --prefer-dist --no-progress
 
       # Built here rather than on the host: cPanel has no Node toolchain
       # worth relying on, and the build is deterministic from the lockfile.
