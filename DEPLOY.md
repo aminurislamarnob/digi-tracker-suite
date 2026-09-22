@@ -593,6 +593,17 @@ suite. It runs the same script you would run by hand — a CI deploy that reimpl
 YAML is a second deploy path that drifts from this one, and then a deploy behaves differently
 depending on who triggered it.
 
+All of the setup below is what `deploy/setup-ci.sh` does. Run it once, from a machine that can
+already reach the host:
+
+```sh
+bash deploy/setup-ci.sh
+```
+
+It makes the key, refuses to go further until the host actually accepts it, pins the host key and
+loads all five values into the repository. The steps are documented individually below because a
+script you cannot read is a script you cannot trust with a deploy key.
+
 #### 1. Make a key for CI, not for you
 
 A deploy key is a separate credential with a separate blast radius. Never upload your personal key.
@@ -608,7 +619,7 @@ your access is untouched.
 Authorise the public half on the host:
 
 ```sh
-ssh-copy-id -i ~/.ssh/digitracker_ci.pub -p 21098 plugpxjv@server219.web-hosting.com
+ssh-copy-id -i ~/.ssh/digitracker_ci.pub -p 21098 plugpxjv@198.54.116.227
 ```
 
 Or paste `digitracker_ci.pub` into cPanel → SSH Access → Manage SSH Keys → Import, then **Manage →
@@ -618,7 +629,7 @@ a wrong key.
 #### 2. Pin the host key
 
 ```sh
-ssh-keyscan -p 21098 server219.web-hosting.com
+ssh-keyscan -p 21098 198.54.116.227
 ```
 
 Run this from a machine you trust and read it once. The workflow never scans at run time: scanning
@@ -632,15 +643,22 @@ Settings → Secrets and variables → Actions → **Secrets**:
 |---|---|
 | `SSH_PRIVATE_KEY` | the whole of `~/.ssh/digitracker_ci`, including both `-----` lines |
 | `SSH_KNOWN_HOSTS` | the `ssh-keyscan` output from step 2 |
-| `SSH_HOSTNAME` | `server219.web-hosting.com` — but see the warning below |
+| `SSH_HOSTNAME` | `198.54.116.227` — the shared IP, not the hostname; see below |
 | `SSH_USER` | `plugpxjv` |
 | `SSH_PORT` | `21098` |
 
-> **The hostname may not be the right address.** §0a records that this account's IP,
-> `198.54.116.227`, is *not* what `server219.web-hosting.com` resolves to — the hostname points at
-> the server's primary address, and the account lives on a different one. If the workflow fails to
-> connect, or connects somewhere unexpected, put the IP in `SSH_HOSTNAME` and re-run `ssh-keyscan`
-> against the IP so `known_hosts` matches what it dials.
+> **Use the IP, not the hostname.** §0a records that this account's IP is *not* what
+> `server219.web-hosting.com` resolves to — the hostname points at the server's primary address and
+> the account lives on a different one. cPanel → General Information → **Shared IP Address** is the
+> authoritative value, and it reads `198.54.116.227`.
+>
+> Whichever you choose, `known_hosts` has to be scanned against **that same string**. SSH matches
+> the pinned entry by the address it dialled, so a scan of the hostname will not satisfy a
+> connection to the IP. Changing one means re-running `ssh-keyscan` for the other.
+>
+> The primary domain `pluginizelab.com` is never the answer. This host sits behind Cloudflare — the
+> reason `config/proxies.php` trusts Cloudflare's ranges — so the domain resolves to an edge address
+> that runs no SSH daemon.
 
 Everything else has a default matching this host and only needs a **Variable** if it changes:
 `APP_DIR`, `DOCROOT`, `REMOTE_PHP`, `REMOTE_COMPOSER`, `PANEL_URL`.
