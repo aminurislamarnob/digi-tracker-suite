@@ -1,0 +1,150 @@
+# Deploy to Namecheap cPanel over SSH.
+#
+# This workflow does not reimplement the deploy -- it runs deploy/deploy.sh,
+# which is the same script a human runs by hand and the only place the split
+# docroot layout, the alt-php handler and the cache ordering are described.
+# Two deploy paths that can drift is how a deploy starts behaving differently
+# depending on who triggered it.
+#
+# What the workflow adds is what a laptop cannot: the suite must pass before
+# anything is uploaded, and every deploy leaves a log of what was deployed,
+# from which commit, by whom.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Never two deploys at once, and never cancel one in flight: the script is
+# not atomic, and a run killed between the rsync and `migrate` leaves new
+# code on the host with the old schema under it.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    # MariaDB, not SQLite: phpunit.xml pins DB_CONNECTION=mysql on purpose,
+    # and the version matches the host so JSON column semantics agree.
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: digi_tracker_suite_testing
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_mysql, bcmath, intl, zip, gd
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Run tests
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_USERNAME: root
+          DB_PASSWORD: root
+        run: php artisan test
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+
+    # Add required reviewers to this environment in repo settings if you want
+    # a human to approve each production deploy.
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # Built here rather than on the host: cPanel has no Node toolchain
+      # worth relying on, and the build is deterministic from the lockfile.
+      - name: Build assets
+        run: |
+          npm ci
+          npm run build
+
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          SSH_HOSTNAME: ${{ secrets.SSH_HOSTNAME }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+          # Pinned, never ssh-keyscan at run time: scanning trusts whatever
+          # answers, which is the one thing a known_hosts file exists to stop.
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+          # deploy.sh addresses the host as a single alias, so port and user
+          # are configured here rather than threaded through the script.
+          cat > ~/.ssh/config <<CONFIG
+          Host digitracker
+            HostName $SSH_HOSTNAME
+            User $SSH_USER
+            Port $SSH_PORT
+            IdentityFile ~/.ssh/id_ed25519
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+            ServerAliveInterval 30
+          CONFIG
+          chmod 600 ~/.ssh/config
+
+      - name: Deploy
+        env:
+          SSH_HOST: digitracker
+          APP_DIR: ${{ vars.APP_DIR || '/home/plugpxjv/digi-tracker' }}
+          DOCROOT: ${{ vars.DOCROOT || '/home/plugpxjv/space.pluginizelab.com' }}
+          PHP: ${{ vars.REMOTE_PHP || '/opt/alt/php83/usr/bin/php' }}
+          COMPOSER: ${{ vars.REMOTE_COMPOSER || '$HOME/bin/composer' }}
+        run: bash deploy/deploy.sh --no-build
+
+      # A 200 from /up proves only that PHP answered -- it renders no view.
+      # /login renders Blade and reads the Vite manifest, so it is the
+      # cheapest check that catches a half-copied build.
+      - name: Smoke test
+        env:
+          PANEL_URL: ${{ vars.PANEL_URL || 'https://space.pluginizelab.com' }}
+        run: |
+          set -e
+
+          login=$(curl -fsS -o /dev/null -w '%{http_code}' "$PANEL_URL/login")
+          echo "GET /login -> $login"
+          [ "$login" = "200" ] || { echo "::error::panel did not render"; exit 1; }
+
+          env_file=$(curl -sS -o /dev/null -w '%{http_code}' "$PANEL_URL/.env")
+          echo "GET /.env -> $env_file"
+          [ "$env_file" = "404" ] || { echo "::error::.env is being served -- document root is wrong"; exit 1; }

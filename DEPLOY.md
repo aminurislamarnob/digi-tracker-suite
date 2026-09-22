@@ -586,6 +586,85 @@ back, redeploy the previous commit and re-run the cache commands. Leave the data
 `migrate:rollback` on a telemetry database destroys history that cannot be re-collected, because the
 heartbeats that produced it were fire-and-forget.
 
+### Deploying from GitHub Actions
+
+`.github/workflows/deploy.yml` runs `deploy/deploy.sh` on every push to `main`, gated on the test
+suite. It runs the same script you would run by hand — a CI deploy that reimplements the steps in
+YAML is a second deploy path that drifts from this one, and then a deploy behaves differently
+depending on who triggered it.
+
+#### 1. Make a key for CI, not for you
+
+A deploy key is a separate credential with a separate blast radius. Never upload your personal key.
+
+```sh
+ssh-keygen -t ed25519 -f ~/.ssh/digitracker_ci -C "github-actions-deploy" -N ""
+```
+
+`-N ""` gives it no passphrase, which is unavoidable — nobody is present to type one. That is the
+whole reason it is a dedicated key: if it leaks you revoke one line on the server and the rest of
+your access is untouched.
+
+Authorise the public half on the host:
+
+```sh
+ssh-copy-id -i ~/.ssh/digitracker_ci.pub -p 21098 plugpxjv@server219.web-hosting.com
+```
+
+Or paste `digitracker_ci.pub` into cPanel → SSH Access → Manage SSH Keys → Import, then **Manage →
+Authorize**. An imported key that is not authorised does nothing, and the failure looks exactly like
+a wrong key.
+
+#### 2. Pin the host key
+
+```sh
+ssh-keyscan -p 21098 server219.web-hosting.com
+```
+
+Run this from a machine you trust and read it once. The workflow never scans at run time: scanning
+trusts whatever answers, which is the one thing `known_hosts` exists to prevent.
+
+#### 3. Repository secrets
+
+Settings → Secrets and variables → Actions → **Secrets**:
+
+| Secret | Value |
+|---|---|
+| `SSH_PRIVATE_KEY` | the whole of `~/.ssh/digitracker_ci`, including both `-----` lines |
+| `SSH_KNOWN_HOSTS` | the `ssh-keyscan` output from step 2 |
+| `SSH_HOSTNAME` | `server219.web-hosting.com` — but see the warning below |
+| `SSH_USER` | `plugpxjv` |
+| `SSH_PORT` | `21098` |
+
+> **The hostname may not be the right address.** §0a records that this account's IP,
+> `198.54.116.227`, is *not* what `server219.web-hosting.com` resolves to — the hostname points at
+> the server's primary address, and the account lives on a different one. If the workflow fails to
+> connect, or connects somewhere unexpected, put the IP in `SSH_HOSTNAME` and re-run `ssh-keyscan`
+> against the IP so `known_hosts` matches what it dials.
+
+Everything else has a default matching this host and only needs a **Variable** if it changes:
+`APP_DIR`, `DOCROOT`, `REMOTE_PHP`, `REMOTE_COMPOSER`, `PANEL_URL`.
+
+#### 4. Gate it on a human, if you want one
+
+The deploy job declares `environment: production`. Settings → Environments → production → **Required
+reviewers** makes every deploy wait for an approval click. Worth it while the workflow is new.
+
+#### What the workflow does that the script cannot
+
+- **Tests must pass first.** Against MariaDB 11.4 in a service container, because `phpunit.xml`
+  pins `DB_CONNECTION=mysql` deliberately and a green SQLite suite would be false confidence.
+- **One deploy at a time**, and a running deploy is never cancelled. The script is not atomic; a run
+  killed between the `rsync` and `migrate` leaves new code on the host over the old schema.
+- **A smoke test.** `GET /login` must return 200 and `GET /.env` must return 404. `/up` is not used:
+  it renders no view, so it answers 200 with a broken Vite manifest and an unusable dashboard.
+
+#### What it deliberately does not do
+
+No `artisan down`. A 503 to `/track` is a heartbeat lost forever — the SDK sends fire-and-forget and
+never retries. A few seconds of mixed old and new code is the better trade, and it is why the cache
+rebuild order in the script matters more here than the downtime would.
+
 ---
 
 ## 8. GeoIP (optional)
