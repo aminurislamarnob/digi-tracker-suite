@@ -586,6 +586,103 @@ back, redeploy the previous commit and re-run the cache commands. Leave the data
 `migrate:rollback` on a telemetry database destroys history that cannot be re-collected, because the
 heartbeats that produced it were fire-and-forget.
 
+### Deploying from GitHub Actions
+
+`.github/workflows/deploy.yml` runs `deploy/deploy.sh` on every push to `main`, gated on the test
+suite. It runs the same script you would run by hand — a CI deploy that reimplements the steps in
+YAML is a second deploy path that drifts from this one, and then a deploy behaves differently
+depending on who triggered it.
+
+All of the setup below is what `deploy/setup-ci.sh` does. Run it once, from a machine that can
+already reach the host:
+
+```sh
+bash deploy/setup-ci.sh
+```
+
+It makes the key, refuses to go further until the host actually accepts it, pins the host key and
+loads all five values into the repository. The steps are documented individually below because a
+script you cannot read is a script you cannot trust with a deploy key.
+
+#### 1. Make a key for CI, not for you
+
+A deploy key is a separate credential with a separate blast radius. Never upload your personal key.
+
+```sh
+ssh-keygen -t ed25519 -f ~/.ssh/digitracker_ci -C "github-actions-deploy" -N ""
+```
+
+`-N ""` gives it no passphrase, which is unavoidable — nobody is present to type one. That is the
+whole reason it is a dedicated key: if it leaks you revoke one line on the server and the rest of
+your access is untouched.
+
+Authorise the public half on the host:
+
+```sh
+ssh-copy-id -i ~/.ssh/digitracker_ci.pub -p 21098 plugpxjv@198.54.116.227
+```
+
+Or paste `digitracker_ci.pub` into cPanel → SSH Access → Manage SSH Keys → Import, then **Manage →
+Authorize**. An imported key that is not authorised does nothing, and the failure looks exactly like
+a wrong key.
+
+#### 2. Pin the host key
+
+```sh
+ssh-keyscan -p 21098 198.54.116.227
+```
+
+Run this from a machine you trust and read it once. The workflow never scans at run time: scanning
+trusts whatever answers, which is the one thing `known_hosts` exists to prevent.
+
+#### 3. Repository secrets
+
+Settings → Secrets and variables → Actions → **Secrets**:
+
+| Secret | Value |
+|---|---|
+| `SSH_PRIVATE_KEY` | the whole of `~/.ssh/digitracker_ci`, including both `-----` lines |
+| `SSH_KNOWN_HOSTS` | the `ssh-keyscan` output from step 2 |
+| `SSH_HOSTNAME` | `198.54.116.227` — the shared IP, not the hostname; see below |
+| `SSH_USER` | `plugpxjv` |
+| `SSH_PORT` | `21098` |
+
+> **Use the IP, not the hostname.** §0a records that this account's IP is *not* what
+> `server219.web-hosting.com` resolves to — the hostname points at the server's primary address and
+> the account lives on a different one. cPanel → General Information → **Shared IP Address** is the
+> authoritative value, and it reads `198.54.116.227`.
+>
+> Whichever you choose, `known_hosts` has to be scanned against **that same string**. SSH matches
+> the pinned entry by the address it dialled, so a scan of the hostname will not satisfy a
+> connection to the IP. Changing one means re-running `ssh-keyscan` for the other.
+>
+> The primary domain `pluginizelab.com` is never the answer. This host sits behind Cloudflare — the
+> reason `config/proxies.php` trusts Cloudflare's ranges — so the domain resolves to an edge address
+> that runs no SSH daemon.
+
+Everything else has a default matching this host and only needs a **Variable** if it changes:
+`APP_DIR`, `DOCROOT`, `REMOTE_PHP`, `REMOTE_COMPOSER`, `PANEL_URL`.
+
+#### 4. Gate it on a human, if you want one
+
+The deploy job declares `environment: production`. Settings → Environments → production → **Required
+reviewers** makes every deploy wait for an approval click. Worth it while the workflow is new.
+
+#### What the workflow does that the script cannot
+
+- **Tests must pass first.** Against MariaDB 11.4 in a service container, because `phpunit.xml`
+  pins `DB_CONNECTION=mysql` deliberately and a green SQLite suite would be false confidence.
+- **One deploy at a time**, and a running deploy is never cancelled. The script is not atomic; a run
+  killed between the `rsync` and `migrate` leaves new code on the host over the old schema.
+- **A smoke test.** `GET /login` must return 200 and `GET /.env` must return 404. `/up` is not used:
+  it renders no view, so it answers 200 with a broken Vite manifest and an unusable dashboard.
+
+#### What it deliberately does not do
+
+No `artisan down`. A 503 to `/track` is a heartbeat lost forever — the SDK sends fire-and-forget and
+never retries. A few seconds of mixed old and new code is the better trade, and it is why the cache
+rebuild order in the script matters more here than the downtime would.
+
 ---
 
 ## 8. GeoIP (optional)
