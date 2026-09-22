@@ -153,6 +153,18 @@ jobs:
           printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
 
+          # Check the key parses before anything tries to use it.
+          #
+          # A key damaged in transit -- newlines flattened by a paste, a
+          # truncated body, a PuTTY .ppk -- fails inside rsync as
+          # "error in libcrypto" followed by "Permission denied", which reads
+          # like the server rejected a good key rather than like a file that
+          # was never a key. ssh-keygen -y says so plainly instead.
+          if ! ssh-keygen -y -f ~/.ssh/id_ed25519 >/dev/null 2>&1; then
+            echo "::error::SSH_PRIVATE_KEY is not a readable private key. Re-add the secret with the whole file, BEGIN and END lines included, real line breaks preserved. A passphrase-protected key cannot be used here either."
+            exit 1
+          fi
+
           # Pinned, never ssh-keyscan at run time: scanning trusts whatever
           # answers, which is the one thing a known_hosts file exists to stop.
           printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
@@ -169,6 +181,11 @@ jobs:
             IdentitiesOnly yes
             StrictHostKeyChecking yes
             ServerAliveInterval 30
+            # No password fallback. Nobody is here to type one, and without
+            # this ssh answers a bad key by prompting into the void and
+            # reporting "Permission denied, please try again" twice over.
+            BatchMode yes
+            PreferredAuthentications publickey
           CONFIG
           chmod 600 ~/.ssh/config
 
