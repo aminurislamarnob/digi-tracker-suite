@@ -1,0 +1,72 @@
+{
+  "generated": "2026-11-08",
+  "authors": [
+    "eng.aminurislam@gmail.com",
+    "Aminur",
+    "Claude"
+  ],
+  "repos": [
+    {
+      "name": "digi-tracker-suite",
+      "path": "/Users/aiarnob/Herd/digi-tracker-suite/digi-tracker-suite",
+      "ref": "main",
+      "commits": 40,
+      "mine": 40,
+      "team": 0,
+      "first_commit": "2026-08-25 18:53",
+      "my_first_commit": "2026-08-25 18:53",
+      "my_last_commit": "2026-09-22 22:13",
+      "team_authors": [],
+      "mine_coauthored": 22,
+      "github": {
+        "slug": "aminurislamarnob/digi-tracker-suite",
+        "merged_prs": 2,
+        "my_merged_prs": 2,
+        "issues": 0,
+        "my_issues": 0
+      }
+    }
+  ],
+  "totals": {
+    "commits": 40,
+    "mine": 40,
+    "team": 0,
+    "mine_coauthored": 22,
+    "merged_prs": 2,
+    "my_merged_prs": 2,
+    "issues": 0,
+    "my_issues": 0
+  },
+  "series": {
+    "granularity": "week",
+    "first": "2026-08-25",
+    "last": "2026-09-22",
+    "rows": [
+      {
+        "start": "2026-08-24",
+        "me": 27,
+        "team": 0
+      },
+      {
+        "start": "2026-08-31",
+        "me": 2,
+        "team": 0
+      },
+      {
+        "start": "2026-09-07",
+        "me": 0,
+        "team": 0
+      },
+      {
+        "start": "2026-09-14",
+        "me": 5,
+        "team": 0
+      },
+      {
+        "start": "2026-09-21",
+        "me": 6,
+        "team": 0
+      }
+    ]
+  }
+}

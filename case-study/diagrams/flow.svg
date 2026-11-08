@@ -1,0 +1,48 @@
+<svg viewBox="0 0 920 410" role="img" aria-label="Sequence Diagram: Ingestion and Reconciliation Flow. The client sends an opt-in heartbeat. TrackController resolves the project by hash uncached, writes the raw payload to raw_payloads, dispatches ProcessTrackingPayload, and returns HTTP 200 immediately. The queued job acquires a per-site lock and runs SiteReconciler to canonicalize the URL, check the 6-hour repeat window, and encrypt the admin email with an HMAC blind index." xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="sh" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto"><path class="d-m" d="M0 0L8 4L0 8z"/></marker>
+    <marker id="sa" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path class="d-ma" d="M0 0L8 4L0 8z"/></marker>
+  </defs>
+
+  <!-- Lifelines -->
+  <line class="d-life" x1="100" y1="56" x2="100" y2="390"/>
+  <line class="d-life" x1="330" y1="56" x2="330" y2="390"/>
+  <line class="d-life" x1="570" y1="56" x2="570" y2="390"/>
+  <line class="d-life" x1="810" y1="56" x2="810" y2="390"/>
+
+  <!-- Actor boxes -->
+  <rect class="d-box" x="20" y="20" width="160" height="36" rx="6"/><text class="d-t" x="100" y="43" text-anchor="middle">WordPress Client</text>
+  <rect class="d-box" x="250" y="20" width="160" height="36" rx="6"/><text class="d-t" x="330" y="43" text-anchor="middle">TrackController</text>
+  <rect class="d-box" x="490" y="20" width="160" height="36" rx="6"/><text class="d-t" x="570" y="43" text-anchor="middle">Queue &amp; Reconciler</text>
+  <rect class="d-box" x="730" y="20" width="160" height="36" rx="6"/><text class="d-t" x="810" y="43" text-anchor="middle">MySQL (InnoDB)</text>
+
+  <!-- Message 1: Heartbeat sent -->
+  <line class="d-a" x1="100" y1="94" x2="324" y2="94" marker-end="url(#sa)"/>
+  <text class="d-at" x="215" y="86" text-anchor="middle">POST /track (hash, URL, PHP, WP)</text>
+
+  <!-- Message 2: Raw payload saved first -->
+  <line class="d-l" x1="330" y1="134" x2="804" y2="134" marker-end="url(#sh)"/>
+  <text class="d-t" x="570" y="126" text-anchor="middle">Uncached hash lookup + insert raw_payloads</text>
+
+  <!-- Message 3: Dispatch job & return 200 immediately -->
+  <line class="d-l" x1="330" y1="174" x2="564" y2="174" marker-end="url(#sh)"/>
+  <text class="d-t" x="450" y="166" text-anchor="middle">Dispatch ProcessTrackingPayload</text>
+
+  <line class="d-l d-dash" x1="330" y1="210" x2="106" y2="210" marker-end="url(#sh)"/>
+  <text class="d-t" x="215" y="202" text-anchor="middle">HTTP 200 {"success": true}</text>
+
+  <!-- Message 4: Per-site lock & 6h window -->
+  <line class="d-l" x1="570" y1="242" x2="620" y2="242"/>
+  <line class="d-l" x1="620" y1="242" x2="620" y2="262"/>
+  <line class="d-l" x1="620" y1="262" x2="574" y2="262" marker-end="url(#sh)"/>
+  <text class="d-s" x="630" y="256">Per-site lock · canonical URL · 6h repeat check</text>
+
+  <!-- Message 5: Encrypt admin email & HMAC index -->
+  <line class="d-l" x1="570" y1="298" x2="804" y2="298" marker-end="url(#sh)"/>
+  <text class="d-t" x="690" y="290" text-anchor="middle">Encrypt email + HMAC hash · write sites &amp; site_reports</text>
+
+  <!-- Guarantee check box -->
+  <rect class="d-check" x="470" y="334" width="410" height="52" rx="6"/>
+  <text class="d-at" x="675" y="356" text-anchor="middle">Raw payload preserved before interpretation</text>
+  <text class="d-s" x="675" y="374" text-anchor="middle">Nightly 02:15 cron builds daily_stats · 03:00 fetches WordPress.org</text>
+</svg>

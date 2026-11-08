@@ -1,0 +1,71 @@
+<svg viewBox="0 0 1020 320" role="img" aria-label="Digi Tracker Suite Architecture: WordPress plugins bundle the namespaced digi-tracker-client SDK to send opt-in heartbeats and deactivations. The Laravel 13 ingest layer resolves the project hash uncached, writes the raw request to raw_payloads, and dispatches ProcessTrackingPayload to the queue. SiteReconciler canonicalizes URLs and encrypts emails at rest with an HMAC blind index. Filament 5 serves the multi-tenant panel while scheduled commands build daily_stats and capture public WordPress.org snapshots." xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="ah" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path class="d-m" d="M0 0L8 4L0 8z"/></marker>
+    <marker id="aa" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="d-ma" d="M0 0L8 4L0 8z"/></marker>
+  </defs>
+
+  <!-- Zone 1: Client WordPress Sites -->
+  <rect class="d-zone" x="20" y="24" width="290" height="270" rx="8"/>
+  <text class="d-z" x="36" y="46">WordPress Client · Forked SDK</text>
+
+  <!-- Box: SDK Client -->
+  <rect class="d-box" x="40" y="70" width="250" height="64" rx="6"/>
+  <text class="d-t" x="165" y="98" text-anchor="middle">pluginizelab/digi-tracker-client</text>
+  <text class="d-s" x="165" y="116" text-anchor="middle">PluginizeLab\DigiTracker · no Dokan clash</text>
+
+  <!-- Box: Privacy & Consent -->
+  <rect class="d-box" x="40" y="155" width="250" height="115" rx="6"/>
+  <text class="d-t" x="165" y="180" text-anchor="middle">Guideline 7 Privacy &amp; Hooks</text>
+  <text class="d-s" x="165" y="200" text-anchor="middle">no icanhazip.com outbound request</text>
+  <text class="d-s" x="165" y="220" text-anchor="middle">deactivation gated on tracking_allowed()</text>
+  <text class="d-s" x="165" y="240" text-anchor="middle">digi_tracker_endpoint &amp; is_local hooks</text>
+
+  <!-- Line inside Zone 1 -->
+  <line class="d-l" x1="165" y1="134" x2="165" y2="151" marker-end="url(#ah)"/>
+
+  <!-- Zone 2: Telemetry Ingest & Storage -->
+  <rect class="d-zone" x="350" y="24" width="340" height="270" rx="8"/>
+  <text class="d-z" x="366" y="46">Ingest &amp; Core Engine · Laravel 13</text>
+
+  <!-- Box: Ingest Controller -->
+  <rect class="d-box" x="370" y="70" width="300" height="64" rx="6"/>
+  <text class="d-t" x="520" y="98" text-anchor="middle">Telemetry Ingest Routes</text>
+  <text class="d-s" x="520" y="116" text-anchor="middle">/track · /deactivate · raw_payloads store</text>
+
+  <!-- Box: Reconciliation & Security -->
+  <rect class="d-box" x="370" y="155" width="300" height="115" rx="6"/>
+  <text class="d-t" x="520" y="180" text-anchor="middle">ProcessTrackingPayload &amp; SiteReconciler</text>
+  <text class="d-s" x="520" y="200" text-anchor="middle">uncached hash lookup · per-site lock</text>
+  <text class="d-s" x="520" y="220" text-anchor="middle">canonical URL dedup · 6h repeat window</text>
+  <text class="d-s" x="520" y="240" text-anchor="middle">APP_KEY encrypted email · HMAC index</text>
+
+  <!-- Line inside Zone 2 -->
+  <line class="d-l" x1="520" y1="134" x2="520" y2="151" marker-end="url(#ah)"/>
+
+  <!-- Zone 3: Operations & Presentation -->
+  <rect class="d-zone" x="725" y="24" width="275" height="270" rx="8"/>
+  <text class="d-z" x="741" y="46">Panel &amp; Operations · Filament 5 &amp; Cron</text>
+
+  <!-- Box: Filament Multi-Tenant Dashboard -->
+  <rect class="d-box" x="745" y="70" width="235" height="84" rx="6"/>
+  <text class="d-t" x="862" y="96" text-anchor="middle">Filament 5 Multi-Tenant Panel</text>
+  <text class="d-s" x="862" y="114" text-anchor="middle">Albert Sans &amp; Outfit local fonts</text>
+  <text class="d-s" x="862" y="132" text-anchor="middle">OpenAI dark neutrals · split auth</text>
+
+  <!-- Box: Rollup & WordPress.org Sync -->
+  <rect class="d-box" x="745" y="175" width="235" height="95" rx="6"/>
+  <text class="d-t" x="862" y="201" text-anchor="middle">Repo Intelligence &amp; Scheduler</text>
+  <text class="d-s" x="862" y="219" text-anchor="middle">WordPress.org API &amp; SVN PROPFIND</text>
+  <text class="d-s" x="862" y="237" text-anchor="middle">daily_stats rollup · Mailer choke point</text>
+  <text class="d-s" x="862" y="255" text-anchor="middle">one-line crontab · InnoDB row locks</text>
+
+  <!-- Cross-zone connection: SDK to Ingest -->
+  <line class="d-a" x1="290" y1="102" x2="366" y2="102" marker-end="url(#aa)"/>
+  <text class="d-at" x="325" y="94" text-anchor="middle">POST</text>
+
+  <!-- Connection: Reconciler to Operations -->
+  <line class="d-l" x1="670" y1="210" x2="741" y2="210" marker-end="url(#ah)"/>
+
+  <!-- Connection: Rollup to Panel -->
+  <line class="d-l" x1="862" y1="175" x2="862" y2="158" marker-end="url(#ah)"/>
+</svg>

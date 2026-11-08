@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Digi Tracker Suite</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Albert+Sans:ital,wght@0,400..700;1,400..700&amp;family=Outfit:wght@400..800&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+:root{color-scheme:light}
+/* Layout: a dated engineering log. A left rail says when each piece of work happened; the story runs beside it. */
+:root {
+  --paper:#EDF1F2;
+  --surface:#FAFCFC;
+  --ink:#10212A;
+  --muted:#4C5D65;
+  --rule:#C4D0D4;
+  --accent:#195CE3;
+  --me:#195CE3;
+  --team:#4c5d65;
+  --before:#9AA8AE;
+  --note:#E0EBED;
+  --band:#0d1b2a;
+  --band-ink:#f1f5f4;
+  --band-muted:#8ca0b3;
+  --band-rule:#1e324a;
+  --highlight:#60a5fa;
+  --display:"Outfit",system-ui,sans-serif;
+  --body:"Albert Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper:#0a0a0a;
+  --surface:#121212;
+  --ink:#e5e5e5;
+  --muted:#8c8c8c;
+  --rule:#222222;
+  --accent:#60a5fa;
+  --me:#60a5fa;
+  --team:#64748b;
+  --before:#66767C;
+  --note:#171717;
+  --band:#0d1b2a;
+  --band-ink:#f1f5f4;
+  --band-muted:#8ca0b3;
+  --band-rule:#1e324a;
+  --highlight:#60a5fa;
+  color-scheme:dark;
+} }
+:root[data-theme="dark"] {
+  --paper:#0a0a0a;
+  --surface:#121212;
+  --ink:#e5e5e5;
+  --muted:#8c8c8c;
+  --rule:#222222;
+  --accent:#60a5fa;
+  --me:#60a5fa;
+  --team:#64748b;
+  --before:#66767C;
+  --note:#171717;
+  --band:#0d1b2a;
+  --band-ink:#f1f5f4;
+  --band-muted:#8ca0b3;
+  --band-rule:#1e324a;
+  --highlight:#60a5fa;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{background:var(--paper);color:var(--ink);font:400 17px/1.65 var(--body);margin:0}
+img{max-width:100%}
+a{color:var(--accent);text-underline-offset:3px}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px}
+.gutter{padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1120px;margin-inline:auto}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;letter-spacing:-.015em}
+h2{font-size:clamp(1.65rem,1.3rem + 1.4vw,2.35rem);line-height:1.12;font-weight:700}
+h3{font-size:1.15rem;line-height:1.3;font-weight:650;letter-spacing:-.005em}
+p{margin:0}
+code{font:400 .84em var(--mono);background:var(--note);padding:.08em .32em;border-radius:3px;overflow-wrap:anywhere}
+.hero{background:var(--band);color:var(--band-ink);padding-block:clamp(36px,6vw,72px) 0}
+.hero.noshots{padding-block-end:clamp(28px,4vw,48px)}
+.hero a{color:var(--highlight)}
+.eyebrow{font:500 .76rem/1.4 var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--highlight)}
+.hero h1{font-size:clamp(2.45rem,1.5rem + 4.6vw,5rem);line-height:1;font-weight:750;letter-spacing:-.03em;margin-top:18px;max-width:17ch}
+.lede{font-size:clamp(1.08rem,1rem + .4vw,1.3rem);line-height:1.55;max-width:62ch;margin-top:24px;color:var(--band-ink)}
+.hero code{background:var(--band-rule);color:var(--band-ink)}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:18px 28px;margin:34px 0 0;padding:20px 0;border-top:1px solid var(--band-rule)}
+.facts dt{font:500 .72rem/1.4 var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--band-muted)}
+.facts dd{margin:4px 0 0;font-size:.98rem;line-height:1.4}
+.shots{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.262fr);gap:clamp(10px,2vw,22px);align-items:end;margin-top:26px;margin-bottom:-60px;position:relative}
+.shots.single{grid-template-columns:minmax(0,1fr)}
+.shots img{display:block;width:100%;height:auto;border-radius:10px 10px 0 0;box-shadow:0 14px 44px rgba(0,0,0,.4)}
+.shots img.phone{border-radius:14px 14px 0 0}
+.shot-note{padding-top:72px;font:400 .78rem/1.5 var(--mono);color:var(--muted)}
+.noshots + main .shot-note{padding-top:24px}
+section.entry{display:grid;grid-template-columns:150px minmax(0,1fr);gap:0 36px;padding-block:clamp(38px,5vw,62px);border-top:1px solid var(--rule)}
+section.entry.first{border-top:0}
+.rail{font:500 .78rem/1.45 var(--mono);color:var(--accent);padding-top:.5rem}
+.rail span{display:block;color:var(--muted);font-weight:400}
+.col{min-width:0;display:grid;gap:18px}
+.col>p,.col>ul,.col>h2,.col>h3{max-width:68ch}
+.col>h3{margin-top:12px}
+ul.tight{margin:0;padding-left:1.15em;display:grid;gap:8px}
+ul.tight li::marker{color:var(--accent)}
+strong{font-weight:600}
+figure{margin:8px 0;min-width:0}
+figcaption{font-size:.9rem;line-height:1.5;color:var(--muted);margin-top:10px;max-width:68ch}
+.scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--rule);border-radius:8px}
+.scroll svg{display:block;width:100%;height:auto;min-width:680px}
+.shot{display:block;width:100%;height:auto;border-radius:8px;border:1px solid var(--rule)}
+.d-box{fill:var(--surface);stroke:var(--ink);stroke-width:1.2}
+.d-zone{fill:var(--note);stroke:var(--rule);stroke-width:1}
+.d-t{font:600 13px var(--body);fill:var(--ink)}
+.d-s{font:400 11.5px var(--mono);fill:var(--muted)}
+.d-z{font:500 11.5px var(--mono);fill:var(--muted)}
+.d-l{stroke:var(--ink);stroke-width:1.3;fill:none}
+.d-dash{stroke-dasharray:5 4}
+.d-life{stroke:var(--rule);stroke-width:1.2}
+.d-a{stroke:var(--accent);stroke-width:2.2;fill:none}
+.d-at{font:600 12px var(--body);fill:var(--accent)}
+.d-m{fill:var(--ink)} .d-ma{fill:var(--accent)}
+.d-check{fill:var(--note);stroke:var(--accent);stroke-width:1.6}
+.chart{background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:18px clamp(12px,2.2vw,24px) 12px}
+.chart .in{overflow-x:auto}
+.chart svg{display:block;width:100%;height:auto;min-width:600px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 20px;font-size:.9rem;margin-bottom:10px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:7px;vertical-align:-1px}
+.c-me{fill:var(--me)} .c-team{fill:var(--team)}
+.g-grid{stroke:var(--rule);stroke-width:1;stroke-dasharray:2 4}
+.g-base{stroke:var(--ink);stroke-width:1.2}
+.g-tick{stroke:var(--muted);stroke-width:1}
+.g-ax{font:400 11px var(--mono);fill:var(--muted)}
+.g-m{font:500 12px var(--mono);fill:var(--ink)}
+.g-v{font:500 10.5px var(--mono);fill:var(--muted)}
+.totals{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px 24px;margin-top:6px}
+.totals div{border-top:1px solid var(--rule);padding-top:8px}
+.totals b{display:block;font:650 1.5rem/1.1 var(--display);font-variant-numeric:tabular-nums}
+.totals small{display:block;font:400 .78rem/1.45 var(--mono);color:var(--muted)}
+.ranges{background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:18px clamp(12px,2.2vw,24px);display:grid;gap:16px}
+.row-h{display:flex;flex-wrap:wrap;justify-content:space-between;gap:2px 14px;font-size:.94rem;margin-bottom:6px}
+.row-h span{font:400 .78rem/1.7 var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.track{position:relative;height:30px;background-image:linear-gradient(to right,var(--rule) 1px,transparent 1px);background-size:25% 100%;border-right:1px solid var(--rule)}
+.bar{position:absolute;height:12px;border-radius:0 3px 3px 0;min-width:4px}
+.bar.b{top:2px;background:var(--before)} .bar.a{top:16px;background:var(--me)}
+.axis{display:flex;justify-content:space-between;font:400 .74rem var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+pre{margin:0;overflow-x:auto;background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:14px 16px;font:400 .8rem/1.75 var(--mono)}
+pre .t{color:var(--accent);font-weight:500;margin-right:1.2ch}
+.tbl{overflow-x:auto;border:1px solid var(--rule);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.94rem;min-width:520px}
+th,td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--rule);vertical-align:top}
+tr:last-child td{border-bottom:0}
+th{font:500 .72rem var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+.split{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.split>div{background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:16px 18px;min-width:0}
+.split h3{margin-bottom:10px;display:flex;align-items:center;gap:9px}
+.split h3 i{width:11px;height:11px;border-radius:2px;display:inline-block}
+.split ul{font-size:.95rem}
+.defs{display:grid;gap:0;margin:0;border-top:1px solid var(--rule)}
+.defs>div{display:grid;grid-template-columns:minmax(0,190px) minmax(0,1fr);gap:4px 22px;padding:14px 0;border-bottom:1px solid var(--rule)}
+.defs dt{font-family:var(--display);font-weight:650;line-height:1.35}
+.defs dd{margin:0;font-size:.97rem;max-width:62ch}
+.muted{font-size:.9rem;color:var(--muted)}
+footer{border-top:1px solid var(--rule);padding-block:32px 56px;color:var(--muted);font-size:.9rem;line-height:1.6}
+footer h3{color:var(--ink);margin-bottom:6px}
+footer p{max-width:76ch}
+.stack{font:400 .8rem/1.8 var(--mono);color:var(--muted)}
+@media (max-width:780px){
+  section.entry{grid-template-columns:minmax(0,1fr);gap:10px}
+  .rail{padding-top:0}.rail span{display:inline;margin-left:.6ch}
+  .defs>div{grid-template-columns:minmax(0,1fr)}
+}
+</style>
+</head>
+<body>
+<header class="hero gutter"><div class="wrap">
+<p class="eyebrow">Case study · WordPress Telemetry &amp; Repository Analytics</p>
+<h1>Self-hosted WordPress telemetry and public repository analytics on shared hosting</h1>
+<p class="lede">Between 25 August and 22 September 2026 I built Digi Tracker Suite for PluginizeLab, a self-hosted WordPress telemetry application and forked client SDK (<code>pluginizelab/digi-tracker-client</code>) that replaces Appsero. It collects opt-in heartbeats and deactivation feedback alongside daily public snapshots from wordpress.org. I made <strong>all 40 commits</strong> on <code>main</code> (22 with a Claude co-author trailer) and merged <strong>both pull requests</strong> on GitHub.</p>
+<dl class="facts"><div><dt>My role</dt><dd>Developer, with Claude Opus 5 as pair</dd></div><div><dt>Team</dt><dd>1 developer, 1 repository (plus <code>packages/digi-tracker-client</code>)</dd></div><div><dt>Window</dt><dd>25 Aug to 22 Sep 2026</dd></div><div><dt>Deployment</dt><dd>Deployed to <code>space.pluginizelab.com</code> on 27 Aug 2026 (<code>DEPLOY.md</code>)</dd></div><div><dt>Stack</dt><dd>Laravel 13, Filament 5, Livewire, PHP 8.3, MySQL / MariaDB, Tailwind CSS v4, PHPUnit 12</dd></div></dl>
+<div class="shots"><img src="img/home-desktop.jpg" width="1440" height="900" alt="Digi Tracker Suite split sign-in screen on desktop with the form on the left and a portrait video panel on the right"><img class="phone" src="img/home-phone.jpg" width="390" height="844" alt="Digi Tracker Suite sign-in screen on a phone viewport"></div>
+</div></header>
+<main class="gutter"><div class="wrap">
+<p class="shot-note">The <code>/login</code> page on desktop (1440×900) and phone (390×844), captured locally from <code>digi-tracker-suite.test</code> on 8 Nov 2026.</p>
+<section class="entry first"><div class="rail">The weeks <span>25 Aug to 22 Sep</span></div><div class="col"><h2>What the five weeks looked like</h2><p>Twenty-seven of the 40 commits landed between 25 and 28 August: phases P1 through P6 (ingest, rollup, dashboard, SDK fork, analytics reports, email layer), the Namecheap deployment on 27 August, and the public wordpress.org repository integration. Two commits followed on 31 August for on-demand repository refreshes and the account overview dashboard. The repository was quiet from 1 to 19 September. Five commits on 20 September redesigned the authentication pages, typography, and dark theme, and six commits on 22 September (PRs #1 and #2) added the GitHub Actions deployment workflow.</p><figure><div class="chart"><div class="legend"><span><i style="background:var(--me)"></i>My commits (40)</span><span><i style="background:var(--team)"></i>Other authors (0)</span></div><div class="in"><svg viewBox="0 0 820 276" role="img" aria-label="Commits per week from 2026-08-25 to 2026-09-22: 40 mine and 0 by the team. Busiest week: 2026-08-24."><line class="g-grid" x1="46" y1="236.0" x2="806" y2="236.0"/><text class="g-ax" x="40" y="240.0" text-anchor="end">0</text><line class="g-grid" x1="46" y1="172.0" x2="806" y2="172.0"/><text class="g-ax" x="40" y="176.0" text-anchor="end">10</text><line class="g-grid" x1="46" y1="108.0" x2="806" y2="108.0"/><text class="g-ax" x="40" y="112.0" text-anchor="end">20</text><line class="g-grid" x1="46" y1="44.0" x2="806" y2="44.0"/><text class="g-ax" x="40" y="48.0" text-anchor="end">30</text><g><title>Week of 24 Aug: 27 mine, 0 team</title><rect class="c-me" x="65.6" y="63.2" width="123.7" height="172.8"/><text class="g-v" x="127.4" y="57.2" text-anchor="middle">27</text></g><line class="g-tick" x1="65.6" y1="236" x2="65.6" y2="246"/><text class="g-m" x="65.6" y="262">Aug</text><g><title>Week of 31 Aug: 2 mine, 0 team</title><rect class="c-me" x="216.4" y="223.2" width="123.7" height="12.8"/><text class="g-v" x="278.2" y="217.2" text-anchor="middle">2</text></g><g><title>Week of 7 Sep: 0 mine, 0 team</title></g><line class="g-tick" x1="367.2" y1="236" x2="367.2" y2="246"/><text class="g-m" x="367.2" y="262">Sep</text><g><title>Week of 14 Sep: 5 mine, 0 team</title><rect class="c-me" x="518.0" y="204.0" width="123.7" height="32.0"/><text class="g-v" x="579.8" y="198.0" text-anchor="middle">5</text></g><g><title>Week of 21 Sep: 6 mine, 0 team</title><rect class="c-me" x="668.8" y="197.6" width="123.7" height="38.4"/><text class="g-v" x="730.6" y="191.6" text-anchor="middle">6</text></g><line class="g-base" x1="46" y1="236" x2="806" y2="236"/></svg></div></div><figcaption>Weekly non-merge commits on <code>main</code> (<code>70682eb</code>). All 40 commits are mine; 22 carry a Claude co-author trailer.</figcaption></figure><div class="totals"><div><b>40 of 40</b><small>commits on main</small></div><div><b>22 of 40</b><small>commits co-authored with Claude</small></div><div><b>2 of 2</b><small>merged pull requests</small></div><div><b>282 / 939</b><small>PHPUnit tests / assertions passing</small></div></div></div></section>
+<section class="entry"><div class="rail">The brief <span>25 Aug</span></div><div class="col"><h2>Why build a self-hosted replacement for Appsero</h2><p>From <code>DEPLOY.md</code> and <code>packages/digi-tracker-client/README.md</code>, the platform had to receive Appsero-protocol telemetry on infrastructure owned by PluginizeLab while meeting five constraints:</p><ul class="tight"><li><strong>Permanent ingest paths:</strong> <code>/track</code>, <code>/deactivate</code> and <code>/tracking-skipped</code> are compiled into every released plugin copy and can never be changed once shipped.</li><li><strong>WordPress.org Guideline 7 compliance:</strong> telemetry is strictly opt-in. The consent notice names Digi Tracker and links to our privacy policy, and the deactivation survey only fires when consent was granted.</li><li><strong>No third-party IP lookups:</strong> upstream <code>appsero/client</code> queries <code>icanhazip.com</code> on every heartbeat. The fork removes that outbound call and derives country on our receiving server.</li><li><strong>Encrypted contact details at rest:</strong> admin emails and names are encrypted with <code>APP_KEY</code>, paired with an HMAC blind index (<code>email_hash</code>) so records remain searchable without storing plaintext emails.</li><li><strong>Shared cPanel hosting:</strong> the server runs on Namecheap shared hosting with SSH, MariaDB, and a single-line per-minute cron job.</li></ul></div></section>
+<section class="entry"><div class="rail">Architecture <span>26 to 27 Aug</span></div><div class="col"><h2>The platform: durable ingest, queued reconciliation, and a Filament 5 panel</h2><p>The WordPress SDK posts non-blocking requests (<code>&#x27;blocking&#x27; =&gt; false</code>), so a failed parse or dropped request is never retried by the client. <code>TrackController</code> and <code>DeactivateController</code> resolve the project from its UUID <code>hash</code>, write the raw request to <code>raw_payloads</code> before any interpretation, dispatch <code>ProcessTrackingPayload</code> to the database queue, and return <code>200 {&quot;success&quot;: true}</code> immediately.</p><figure><div class="scroll"><svg viewBox="0 0 1020 320" role="img" aria-label="Digi Tracker Suite Architecture: WordPress plugins bundle the namespaced digi-tracker-client SDK to send opt-in heartbeats and deactivations. The Laravel 13 ingest layer resolves the project hash uncached, writes the raw request to raw_payloads, and dispatches ProcessTrackingPayload to the queue. SiteReconciler canonicalizes URLs and encrypts emails at rest with an HMAC blind index. Filament 5 serves the multi-tenant panel while scheduled commands build daily_stats and capture public WordPress.org snapshots." xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="ah" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path class="d-m" d="M0 0L8 4L0 8z"/></marker>
+    <marker id="aa" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="d-ma" d="M0 0L8 4L0 8z"/></marker>
+  </defs>
+
+  <!-- Zone 1: Client WordPress Sites -->
+  <rect class="d-zone" x="20" y="24" width="290" height="270" rx="8"/>
+  <text class="d-z" x="36" y="46">WordPress Client · Forked SDK</text>
+
+  <!-- Box: SDK Client -->
+  <rect class="d-box" x="40" y="70" width="250" height="64" rx="6"/>
+  <text class="d-t" x="165" y="98" text-anchor="middle">pluginizelab/digi-tracker-client</text>
+  <text class="d-s" x="165" y="116" text-anchor="middle">PluginizeLab\DigiTracker · no Dokan clash</text>
+
+  <!-- Box: Privacy & Consent -->
+  <rect class="d-box" x="40" y="155" width="250" height="115" rx="6"/>
+  <text class="d-t" x="165" y="180" text-anchor="middle">Guideline 7 Privacy &amp; Hooks</text>
+  <text class="d-s" x="165" y="200" text-anchor="middle">no icanhazip.com outbound request</text>
+  <text class="d-s" x="165" y="220" text-anchor="middle">deactivation gated on tracking_allowed()</text>
+  <text class="d-s" x="165" y="240" text-anchor="middle">digi_tracker_endpoint &amp; is_local hooks</text>
+
+  <!-- Line inside Zone 1 -->
+  <line class="d-l" x1="165" y1="134" x2="165" y2="151" marker-end="url(#ah)"/>
+
+  <!-- Zone 2: Telemetry Ingest & Storage -->
+  <rect class="d-zone" x="350" y="24" width="340" height="270" rx="8"/>
+  <text class="d-z" x="366" y="46">Ingest &amp; Core Engine · Laravel 13</text>
+
+  <!-- Box: Ingest Controller -->
+  <rect class="d-box" x="370" y="70" width="300" height="64" rx="6"/>
+  <text class="d-t" x="520" y="98" text-anchor="middle">Telemetry Ingest Routes</text>
+  <text class="d-s" x="520" y="116" text-anchor="middle">/track · /deactivate · raw_payloads store</text>
+
+  <!-- Box: Reconciliation & Security -->
+  <rect class="d-box" x="370" y="155" width="300" height="115" rx="6"/>
+  <text class="d-t" x="520" y="180" text-anchor="middle">ProcessTrackingPayload &amp; SiteReconciler</text>
+  <text class="d-s" x="520" y="200" text-anchor="middle">uncached hash lookup · per-site lock</text>
+  <text class="d-s" x="520" y="220" text-anchor="middle">canonical URL dedup · 6h repeat window</text>
+  <text class="d-s" x="520" y="240" text-anchor="middle">APP_KEY encrypted email · HMAC index</text>
+
+  <!-- Line inside Zone 2 -->
+  <line class="d-l" x1="520" y1="134" x2="520" y2="151" marker-end="url(#ah)"/>
+
+  <!-- Zone 3: Operations & Presentation -->
+  <rect class="d-zone" x="725" y="24" width="275" height="270" rx="8"/>
+  <text class="d-z" x="741" y="46">Panel &amp; Operations · Filament 5 &amp; Cron</text>
+
+  <!-- Box: Filament Multi-Tenant Dashboard -->
+  <rect class="d-box" x="745" y="70" width="235" height="84" rx="6"/>
+  <text class="d-t" x="862" y="96" text-anchor="middle">Filament 5 Multi-Tenant Panel</text>
+  <text class="d-s" x="862" y="114" text-anchor="middle">Albert Sans &amp; Outfit local fonts</text>
+  <text class="d-s" x="862" y="132" text-anchor="middle">OpenAI dark neutrals · split auth</text>
+
+  <!-- Box: Rollup & WordPress.org Sync -->
+  <rect class="d-box" x="745" y="175" width="235" height="95" rx="6"/>
+  <text class="d-t" x="862" y="201" text-anchor="middle">Repo Intelligence &amp; Scheduler</text>
+  <text class="d-s" x="862" y="219" text-anchor="middle">WordPress.org API &amp; SVN PROPFIND</text>
+  <text class="d-s" x="862" y="237" text-anchor="middle">daily_stats rollup · Mailer choke point</text>
+  <text class="d-s" x="862" y="255" text-anchor="middle">one-line crontab · InnoDB row locks</text>
+
+  <!-- Cross-zone connection: SDK to Ingest -->
+  <line class="d-a" x1="290" y1="102" x2="366" y2="102" marker-end="url(#aa)"/>
+  <text class="d-at" x="325" y="94" text-anchor="middle">POST</text>
+
+  <!-- Connection: Reconciler to Operations -->
+  <line class="d-l" x1="670" y1="210" x2="741" y2="210" marker-end="url(#ah)"/>
+
+  <!-- Connection: Rollup to Panel -->
+  <line class="d-l" x1="862" y1="175" x2="862" y2="158" marker-end="url(#ah)"/>
+</svg>
+</div><figcaption>Payloads land in <code>raw_payloads</code> first, then <code>ProcessTrackingPayload</code> and <code>SiteReconciler</code> update <code>sites</code>, <code>end_users</code>, and <code>site_reports</code> under a per-site lock.</figcaption></figure><p>In the panel, <code>Account</code> is the Filament 5 tenant (<code>/admin/{account-slug}/...</code>). Because Filament only scopes queries built by its own resources, an Eloquent global scope backed by <code>CurrentAccount</code> stays active so custom widgets and services cannot leak rows across tenants.</p></div></section>
+<section class="entry"><div class="rail">Ingest &amp; rollup <span>26 to 27 Aug</span></div><div class="col"><h2>Ingest, metadata whitelist, and the nightly rollup (P1–P3)</h2><p>P1 (<code>34638e9</code>) and P2 (<code>3b44fd7</code>) built the three ingest routes (<code>/track</code>, <code>/deactivate</code>, <code>/tracking-skipped</code>), the <code>extra[]</code> metadata whitelist, plugin inventory sync, GeoIP lookup, site status classification, anomaly detection, and the <code>daily_stats</code> rollup. P3 (<code>5ea4a31</code>, <code>4cd069e</code>) tried a hand-written TailAdmin Blade dashboard first and replaced it 15 minutes later with Filament 5 while keeping <code>DashboardMetrics</code> and the three bug fixes the first pass uncovered.</p><pre><span class="t">25 Aug 18:53</span>Initial commit
+<span class="t">26 Aug 02:32</span>P1: tenancy skeleton and telemetry ingest
+<span class="t">27 Aug 15:58</span>P2: full event coverage, metadata whitelist, and the nightly rollup
+<span class="t">27 Aug 16:14</span>P3: dashboard on the TailAdmin template, replacing Filament
+<span class="t">27 Aug 16:29</span>P3: rebuild the dashboard on Filament, replacing TailAdmin
+<span class="t">27 Aug 16:31</span>Schedule the queue worker so the crontab is one line</pre><dl class="defs"><div><dt>Form-encoded booleans</dt><dd>WordPress&#x27;s <code>http_build_query</code> sends booleans as <code>&quot;1&quot;</code> and <code>&quot;&quot;</code>. Standard Laravel <code>boolean</code> validation rejects empty strings, so <code>TrackRequest</code> reads them through explicit accessors.</dd></div><div><dt>Uncached project lookup</dt><dd>Caching an Eloquent <code>Project</code> model in the MySQL database cache store stripped the NUL bytes marking protected properties and unserialized as <code>__PHP_Incomplete_Class</code>. Caught during a live run and fixed in <code>3b44fd7</code> by querying uncached.</dd></div><div><dt>6-hour repeat window</dt><dd>Identical heartbeats within six hours update <code>last_seen_at</code> on <code>sites</code> without inserting a duplicate <code>site_reports</code> row, preventing a misconfigured cron from weighting one site multiple times.</dd></div><div><dt>Reactivation on the deactivation row</dt><dd><code>sites</code> holds current state only. Stamping <code>reactivated_at</code> on the <code>deactivations</code> row lets <code>daily_stats</code> answer how many sites returned on a past date.</dd></div></dl></div></section>
+<section class="entry"><div class="rail">The SDK fork <span>27 Aug</span></div><div class="col"><h2>Forking appsero/client and closing two upstream consent holes (P4)</h2><p>Commit <code>d77d96f</code> forked <code>appsero/client</code> v2.0.4 (MIT) into <code>packages/digi-tracker-client</code> under GPL-2.0-or-later. As documented in <code>packages/digi-tracker-client/README.md</code>, <code>dokan-lite</code> bundles <code>appsero/client</code> unscoped in the global <code>Appsero\</code> namespace behind <code>if ( ! class_exists( &#x27;Appsero\Client&#x27; ) )</code>. Keeping that namespace on a site running Dokan would cause Dokan&#x27;s unmodified client to load first and silently send our plugin&#x27;s telemetry to Appsero&#x27;s servers.</p><div class="tbl"><table><thead><tr><th>Upstream appsero/client</th><th>digi-tracker-client fork</th><th>Why (<code>packages/digi-tracker-client/README.md</code> &amp; <code>44abd21</code>)</th></tr></thead><tbody><tr><td>Global <code>Appsero\</code> namespace and <code>appsero_*</code> filters</td><td><code>PluginizeLab\DigiTracker</code> and <code>digi_tracker_*</code> filters</td><td>Prevents class and filter collisions when another plugin bundles Appsero</td></tr><tr><td>Queries <code>icanhazip.com</code> on every heartbeat</td><td>Removed (<code>ip_address</code> sent empty for wire compatibility)</td><td>Stops undisclosed outbound requests to a third party; country is resolved on the server</td></tr><tr><td>Deactivation route fires without checking consent</td><td>Gated behind <code>tracking_allowed()</code> (<code>44abd21</code>)</td><td>Upstream sent URL, admin email, name, and plugin list from users who clicked &#x27;No thanks&#x27;</td></tr><tr><td><code>/tracking-skipped</code> stored IP and user agent</td><td><code>ip</code> and <code>user_agent</code> columns dropped (<code>44abd21</code>)</td><td>User agent contains <code>md5(home_url)</code>; storing it turned a refusal into a record of who refused</td></tr><tr><td><code>Client::updater()</code> and <code>Client::license()</code></td><td>Removed</td><td>Plugins are free on wordpress.org; dead accessors for unshipped classes would fatal</td></tr></tbody></table></div><p>Commit <code>fd6a2c1</code> excluded <code>packages/</code> from Laravel Pint and restored upstream&#x27;s WordPress formatting so the fork differs by about 60 lines per file. Commit <code>177c6b9</code> added an <code>mu-plugin</code> harness to test the SDK against a local WordPress install (<code>Metadata Viewer</code>) without editing the plugin&#x27;s own source.</p></div></section>
+<section class="entry"><div class="rail">Analytics &amp; mail <span>27 Aug</span></div><div class="col"><h2>Analytics depth, GDPR erasure, and a single-choke-point email layer (P5–P6)</h2><p>Commits <code>3550c54</code>, <code>9d1153f</code>, and <code>11e74aa</code> added the reproducible demo generator (<code>telemetry:seed-demo --seed</code>), which drives synthetic payloads through <code>SiteReconciler</code> rather than bulk-inserting rows, and <code>telemetry:forget</code>, which deletes a site or email across <code>sites</code>, <code>raw_payloads</code> (which sits outside foreign keys), and any <code>end_users</code> left owning zero sites.</p><p>P5 (<code>2042ba9</code>) added the project Reports page: version adoption stacked by percentage share rather than raw count, churn by theme calculated as a rate (excluding themes with fewer than 5 installs), and CSV exports with explicit per-call-site column lists so aggregate-only plugin inventories can never be exported.</p><p>P6 (<code>4ae69f7</code>) placed four email surfaces (deactivation auto-responder, deactivation forward to author, weekly Monday digest, and per-project branding) behind a single <code>Mailer</code> service. Because telemetry opt-in is consent to be measured rather than marketed to, the auto-responder fires only when a user typed a comment in the deactivation dialog, once per person per project. Unsubscribe links require no login, support RFC 8058 one-click <code>POST</code>, and store suppressions by HMAC blind index in <code>email_suppressions</code>.</p></div></section>
+<section class="entry"><div class="rail">First deploy <span>27 Aug</span></div><div class="col"><h2>Deploying to Namecheap cPanel: four assumptions the server broke</h2><p>Deploying to <code>space.pluginizelab.com</code> on 27 August (<code>0ae456f</code> and <code>DEPLOY.md</code> section 0a) exposed four differences between local development (MySQL 9 on Herd) and the production Namecheap shared host (CloudLinux, LiteSpeed, MariaDB 11.4.12 behind Cloudflare):</p><figure><div class="ranges"><div class="legend" style="margin:0"><span><i style="background:var(--before)"></i>Proxied by Cloudflare</span><span><i style="background:var(--me)"></i>DNS-only to origin</span></div><div><div class="row-h">POST /track arrival rate (DEPLOY.md §0a)<span>10 of 25 (40%) → 15 of 15 (100%)</span></div><div class="track"><div class="bar b" title="Before: 40–40 %" style="left:40.00%;width:0.00%"></div><div class="bar a" title="After: 100–100 %" style="left:100.00%;width:0.00%"></div></div></div><div><div class="row-h">POST /livewire-.../update arrival rate<span>6 of 12 (50%) → 12 of 12 (100%)</span></div><div class="track"><div class="bar b" title="Before: 50–50 %" style="left:50.00%;width:0.00%"></div><div class="bar a" title="After: 100–100 %" style="left:100.00%;width:0.00%"></div></div></div><div class="axis"><span>0 %</span><span>25 %</span><span>50 %</span><span>75 %</span><span>100 %</span></div></div><figcaption>Measured on 27 Aug 2026 (<code>DEPLOY.md</code> section 0a). Proxied POSTs died mid-connection with curl exit codes 35/55/56 and no HTTP status while GET requests succeeded.</figcaption></figure><dl class="defs"><div><dt>Cloudflare dropped half of POSTs</dt><dd>Because the SDK sends fire-and-forget POSTs, dropped <code>/track</code> requests silently under-counted installs and broke half of Livewire&#x27;s panel updates. The ingest hostname is therefore DNS-only (<code>A</code> record to <code>198.54.116.227</code>), and <code>config/proxies.php</code> trusts Cloudflare&#x27;s IP ranges rather than <code>&#x27;*&#x27;</code>.</dd></div><div><dt>MariaDB defaulted to MyISAM</dt><dd>Migrations failed on utf8mb4 1000-byte key limits. Worse, MyISAM lacks <code>SELECT ... FOR UPDATE</code> row locks and transactions, which would have let overlapping per-minute queue workers send duplicate auto-responders and fired <code>DB::afterCommit()</code> prematurely. <code>config/database.php</code> now pins <code>&#x27;engine&#x27; =&gt; env(&#x27;DB_ENGINE&#x27;, &#x27;InnoDB&#x27;)</code>.</dd></div><div><dt>Split document root</dt><dd>cPanel locks the subdomain root to <code>~/space.pluginizelab.com</code>. <code>deploy/deploy.sh</code> keeps the application outside the web root at <code>~/digi-tracker</code>, copies <code>public/</code> into the docroot with rewritten <code>index.php</code> paths, and copies <code>public/build/</code> to both locations so Blade&#x27;s <code>@vite</code> manifest check and the web server agree.</dd></div><div><dt>PHP 8.3 via CloudLinux handler</dt><dd><code>/opt/cpanel/ea-php*</code> stopped at 8.2 and <code>selectorctl --domain</code> silently failed to create its CageFS directory. PHP 8.3.33 lived under <code>/opt/alt/php83</code>, pinned per-docroot via <code>AddHandler application/x-httpd-alt-php83___lsphp .php</code> in <code>.htaccess</code>.</dd></div></dl><figure><div class="scroll"><svg viewBox="0 0 920 410" role="img" aria-label="Sequence Diagram: Ingestion and Reconciliation Flow. The client sends an opt-in heartbeat. TrackController resolves the project by hash uncached, writes the raw payload to raw_payloads, dispatches ProcessTrackingPayload, and returns HTTP 200 immediately. The queued job acquires a per-site lock and runs SiteReconciler to canonicalize the URL, check the 6-hour repeat window, and encrypt the admin email with an HMAC blind index." xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="sh" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto"><path class="d-m" d="M0 0L8 4L0 8z"/></marker>
+    <marker id="sa" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path class="d-ma" d="M0 0L8 4L0 8z"/></marker>
+  </defs>
+
+  <!-- Lifelines -->
+  <line class="d-life" x1="100" y1="56" x2="100" y2="390"/>
+  <line class="d-life" x1="330" y1="56" x2="330" y2="390"/>
+  <line class="d-life" x1="570" y1="56" x2="570" y2="390"/>
+  <line class="d-life" x1="810" y1="56" x2="810" y2="390"/>
+
+  <!-- Actor boxes -->
+  <rect class="d-box" x="20" y="20" width="160" height="36" rx="6"/><text class="d-t" x="100" y="43" text-anchor="middle">WordPress Client</text>
+  <rect class="d-box" x="250" y="20" width="160" height="36" rx="6"/><text class="d-t" x="330" y="43" text-anchor="middle">TrackController</text>
+  <rect class="d-box" x="490" y="20" width="160" height="36" rx="6"/><text class="d-t" x="570" y="43" text-anchor="middle">Queue &amp; Reconciler</text>
+  <rect class="d-box" x="730" y="20" width="160" height="36" rx="6"/><text class="d-t" x="810" y="43" text-anchor="middle">MySQL (InnoDB)</text>
+
+  <!-- Message 1: Heartbeat sent -->
+  <line class="d-a" x1="100" y1="94" x2="324" y2="94" marker-end="url(#sa)"/>
+  <text class="d-at" x="215" y="86" text-anchor="middle">POST /track (hash, URL, PHP, WP)</text>
+
+  <!-- Message 2: Raw payload saved first -->
+  <line class="d-l" x1="330" y1="134" x2="804" y2="134" marker-end="url(#sh)"/>
+  <text class="d-t" x="570" y="126" text-anchor="middle">Uncached hash lookup + insert raw_payloads</text>
+
+  <!-- Message 3: Dispatch job & return 200 immediately -->
+  <line class="d-l" x1="330" y1="174" x2="564" y2="174" marker-end="url(#sh)"/>
+  <text class="d-t" x="450" y="166" text-anchor="middle">Dispatch ProcessTrackingPayload</text>
+
+  <line class="d-l d-dash" x1="330" y1="210" x2="106" y2="210" marker-end="url(#sh)"/>
+  <text class="d-t" x="215" y="202" text-anchor="middle">HTTP 200 {"success": true}</text>
+
+  <!-- Message 4: Per-site lock & 6h window -->
+  <line class="d-l" x1="570" y1="242" x2="620" y2="242"/>
+  <line class="d-l" x1="620" y1="242" x2="620" y2="262"/>
+  <line class="d-l" x1="620" y1="262" x2="574" y2="262" marker-end="url(#sh)"/>
+  <text class="d-s" x="630" y="256">Per-site lock · canonical URL · 6h repeat check</text>
+
+  <!-- Message 5: Encrypt admin email & HMAC index -->
+  <line class="d-l" x1="570" y1="298" x2="804" y2="298" marker-end="url(#sh)"/>
+  <text class="d-t" x="690" y="290" text-anchor="middle">Encrypt email + HMAC hash · write sites &amp; site_reports</text>
+
+  <!-- Guarantee check box -->
+  <rect class="d-check" x="470" y="334" width="410" height="52" rx="6"/>
+  <text class="d-at" x="675" y="356" text-anchor="middle">Raw payload preserved before interpretation</text>
+  <text class="d-s" x="675" y="374" text-anchor="middle">Nightly 02:15 cron builds daily_stats · 03:00 fetches WordPress.org</text>
+</svg>
+</div><figcaption>TrackController writes <code>raw_payloads</code> and returns 200 before <code>ProcessTrackingPayload</code> reconciles the site in the background.</figcaption></figure></div></section>
+<section class="entry"><div class="rail">wordpress.org <span>27 to 31 Aug</span></div><div class="col"><h2>Putting the public wordpress.org record beside private telemetry</h2><p>Commits <code>8d7889e</code>, <code>5cda5a6</code>, <code>fa34b5f</code>, <code>938ee2c</code>, and <code>937bd6c</code> added public repository intelligence. Until released plugins ship with the new SDK, private telemetry reads zero while the plugins on wordpress.org already have years of history. Leading with the public Repository tab and placing tracked installs over public <code>active_installs</code> gives the true opt-in rate.</p><div class="tbl"><table><thead><tr><th>wordpress.org API / SVN quirk (<code>8d7889e</code>, <code>fa34b5f</code>)</th><th>What went wrong initially</th><th>Fix in WordPressOrg / RepoSnapshotter</th></tr></thead><tbody><tr><td><code>downloaded</code> omitted from default <code>plugin_information</code> fields</td><td>Missing key read as <code>0</code> lifetime downloads on every snapshot</td><td>Explicitly request <code>fields[downloaded]=1</code></td></tr><tr><td>Daily downloads API caps at 730 days and silently falls back to 180</td><td>Summing daily rows reported 57,988 lifetime downloads for <code>wp-change-email-sender</code> instead of 78,203</td><td>Clamp history requests to 730 days and read <code>downloads.php?historical_summary=1</code> for headline totals</td></tr><tr><td><code>limit=N</code> returns <code>N-1</code> days ending yesterday (unless <code>limit=1</code>)</td><td>Today&#x27;s downloads were missing and rendered as a dash</td><td>Fetch the 4-window summary live (cached 15 minutes, falling back to the last snapshot on error)</td></tr><tr><td>No wordpress.org API for version release dates</td><td>Days-to-50% adoption was parked in P5 as unbuildable</td><td>One <code>WebDAV PROPFIND</code> request to <code>plugins.svn.wordpress.org</code> recovers tag creation dates back to 2021</td></tr></tbody></table></div><p>Commit <code>938ee2c</code> added <code>RefreshRepoStats</code> so linking a project or clicking Refresh captures the public record immediately via the queue (throttled by a shared cache cooldown key), and <code>937bd6c</code> replaced the default projects list landing page with <code>AccountOverview</code>, using a <code>joinSub</code> on <code>max(date)</code> per project so a quiet plugin never looks like installs dropped to zero.</p></div></section>
+<section class="entry"><div class="rail">Auth &amp; theme <span>28 Aug &amp; 20 Sep</span></div><div class="col"><h2>Client-side navigation, split auth pages, and OpenAI dark neutrals</h2><p>On 28 August (<code>5c0f6ac</code>, <code>0f492c5</code>) I added transactional organisation sign-up (gated by <code>TELEMETRY_REGISTRATION</code>), password reset without account-enumeration leaks, and Livewire <code>wire:navigate</code> (<code>spa()</code>) across the panel with auth routes excluded and hover prefetching disabled so hovering a tab never triggers live requests to wordpress.org.</p><p>On 20 September (<code>30d3e18</code>, <code>392df1a</code>, <code>67f0478</code>, <code>f1a58d2</code>) I redesigned the authentication screens and panel typography:</p><ul class="tight"><li>**Split auth layout (<code>30d3e18</code>):** <code>/login</code>, <code>/register</code>, and <code>/password-reset/*</code> place the brand and a 28rem form column on the left and a muted looping video (<code>public/media/auth.mp4</code> with <code>auth-poster.jpg</code>, paused under <code>prefers-reduced-motion</code>) pinned on the right above 1024px.</li><li>**Local variable fonts (<code>392df1a</code>):** Replaced Filament&#x27;s Bunny Fonts Inter request with self-hosted <code>@fontsource-variable/albert-sans</code> for body copy and <code>@fontsource-variable/outfit</code> for headings and KPI stat values.</li><li>**Dark by default on OpenAI neutrals (<code>67f0478</code>):** Remapped Filament&#x27;s <code>--gray-*</code> tokens on <code>html.dark</code> to the <code>openai.com/codex</code> neutral scale. Auth pages force <code>.dark</code> before first paint and sync Filament&#x27;s Alpine theme store in memory without overwriting a user&#x27;s saved panel preference.</li><li>**Root auth URLs (<code>f1a58d2</code>):** Subclassed Filament&#x27;s <code>Panel</code> (<code>App\Filament\AdminPanel</code>) to mount <code>/login</code>, <code>/register</code>, and <code>/password-reset/*</code> at the root while keeping <code>/admin/password-reset/reset</code> active so previously emailed signed links stay valid for their full hour.</li></ul></div></section>
+<section class="entry"><div class="rail">Under the hood <span>Tests &amp; CI</span></div><div class="col"><h2>The details a visitor never sees</h2><dl class="defs"><div><dt>282 PHPUnit tests on real MySQL</dt><dd><code>phpunit.xml</code> runs against MySQL (<code>digi_tracker_test</code>) rather than SQLite because JSON semantics differ. Base <code>TestCase</code> calls <code>Http::preventStrayRequests()</code>, stubbing wordpress.org with <code>metadata-viewer</code>&#x27;s real figures (<code>10 / 9 / 63 / 4,468</code>).</dd></div><div><dt>Read-only host preflight (<code>3b8b2fd</code>)</dt><dd><code>deploy/preflight.sh</code> checks PHP version, <code>proc_open</code>, cron, and required extensions via <code>php -r</code> rather than <code>php -m | grep -q</code>, avoiding a <code>SIGPIPE</code> false failure under <code>set -o pipefail</code>.</dd></div><div><dt>GitHub Actions deploy pipeline (PRs #1–#2)</dt><dd>Merged on 22 September (<code>36c72f2</code>, <code>70682eb</code>). Runs the PHPUnit suite against <code>mariadb:11.4</code>, installs Composer dependencies so <code>@tailwindcss/vite</code> can resolve Filament&#x27;s CSS in <code>vendor/</code>, executes <code>deploy/deploy.sh</code>, and smoke-tests <code>GET /login</code> (200) and <code>GET /.env</code> (404).</dd></div><div><dt><code>composer dev</code> supervision (<code>6028cad</code>)</dt><dd><code>CLAUDE.md</code> and <code>AGENTS.md</code> instruct agents to run <code>composer dev</code> (<code>artisan dev</code>) rather than <code>npm run dev</code>, after 7 queued <code>RefreshRepoStats</code> jobs sat at <code>attempts=0</code> for three weeks because Vite alone leaves <code>queue:listen</code> unstarted.</dd></div></dl></div></section>
+<section class="entry"><div class="rail">Workflow <span>Aug to Sep</span></div><div class="col"><h2>Working with Claude Opus 5</h2><p>All 40 non-merge commits on <code>main</code> were made in my sessions: 18 without a co-author trailer, 16 with a <code>Co-Authored-By: Claude Opus 5</code> trailer, and 6 in PRs #1 and #2 generated in a Claude Code web session (<code>session_01ESHScKBaVovXQz1dE3g2A7</code>) and merged by me.</p><div class="split"><div><h3><i style="background:var(--me)"></i>Commits without co-author trailer (18)</h3><ul class="tight"><li>P2 event coverage, metadata whitelist, GeoIP, anomaly detection, and <code>daily_stats</code> rollup (<code>3b44fd7</code>)</li><li>P3 dashboard passes on TailAdmin and Filament 5 (<code>5ea4a31</code>, <code>4cd069e</code>) and one-line cron worker (<code>7a9e4e7</code>)</li><li>P4 <code>pluginizelab/digi-tracker-client</code> SDK fork, <code>mu-plugin</code> harness, and closing two upstream consent holes (<code>d77d96f</code>–<code>44abd21</code>)</li><li>Demo corpus generator, reproducible <code>--seed</code>, and <code>telemetry:forget</code> cascade erasure (<code>3550c54</code>, <code>9d1153f</code>, <code>11e74aa</code>)</li><li>P5 analytics reports &amp; CSV export (<code>2042ba9</code>), P6 email layer (<code>4ae69f7</code>), and Namecheap preflight &amp; runbook (<code>3b8b2fd</code>, <code>107079b</code>, <code>82cab1c</code>)</li></ul></div><div><h3><i style="background:var(--team)"></i>Paired with Claude (22 commits, incl. PRs #1–#2)</h3><ul class="tight"><li>P1 tenancy skeleton and Appsero-protocol ingest (<code>34638e9</code>)</li><li>Namecheap deployment fixes (<code>0ae456f</code>) and PluginizeLab panel branding (<code>f9f3f49</code>)</li><li>Public wordpress.org repository capture, SVN release dates, download chart windows, and on-demand refresh (<code>8d7889e</code>–<code>fa34b5f</code>, <code>938ee2c</code>)</li><li>Account Overview dashboard (<code>937bd6c</code>), sign-up &amp; password reset (<code>5c0f6ac</code>), and <code>wire:navigate</code> SPA mode (<code>0f492c5</code>)</li><li>Split auth layout, Albert Sans &amp; Outfit fonts, OpenAI dark neutrals, root auth routes (<code>30d3e18</code>–<code>f1a58d2</code>), and GitHub Actions CI/CD (PRs #1–#2)</li></ul></div></div></div></section>
+<section class="entry"><div class="rail">Where it stands <span>September 2026</span></div><div class="col"><h2>Where Digi Tracker Suite stands</h2><ul class="tight"><li><strong>Deployed on shared hosting:</strong> deployed to <code>space.pluginizelab.com</code> on 27 August 2026 (<code>DEPLOY.md</code> §0a) with a split docroot, InnoDB pinned, and a single-line crontab.</li><li><strong>Public wordpress.org analytics live:</strong> captures daily downloads, active installs, ratings, keyword rankings, and SVN tag release dates across PluginizeLab&#x27;s plugins (<code>metadata-viewer</code>, <code>wp-change-email-sender</code>, and others).</li><li><strong>Forked SDK ready for plugin releases:</strong> <code>packages/digi-tracker-client</code> ships under <code>PluginizeLab\DigiTracker</code> (GPL-2.0-or-later) with upstream&#x27;s <code>icanhazip.com</code> lookup removed and deactivation consent holes closed.</li><li><strong>282 tests, 939 assertions:</strong> verified with PHPUnit 12 against MySQL with zero stray network requests (<code>Http::preventStrayRequests()</code>).</li></ul></div></section>
+</div></main>
+<footer class="gutter"><div class="wrap">
+<h3>Where the numbers come from</h3>
+<p>Commit counts come from <code>git_stats.py</code> on <code>main</code> (<code>70682eb</code>, 25 August to 22 September 2026, Asia/Dhaka) with author patterns <code>eng.aminurislam@gmail.com</code>, <code>Aminur</code>, and <code>Claude</code>, since the 6 commits in PRs #1 and #2 were made in my Claude Code session and count as mine: 40 non-merge commits total, 22 carrying a Claude co-author trailer. Commit counts measure activity, not effort. The Cloudflare POST arrival rates (10/25 on <code>/track</code>, 6/12 on Livewire updates vs 15/15 and 12/12 direct to origin) were measured on 27 August 2026 and recorded in <code>DEPLOY.md</code> section 0a. The test count (282 tests, 939 assertions) was measured by running <code>php artisan test</code> against PHP 8.3.36 and MySQL on 8 November 2026.</p>
+<p class="stack" style="margin-top:14px">Laravel 13 · Filament 5 · Livewire · PHP 8.3 · MySQL / MariaDB · Tailwind CSS v4 · PHPUnit 12 · WordPress SDK</p>
+<p style="margin-top:14px">Md. Aminur Islam (aiarnob), developer of Digi Tracker Suite.</p>
+</div></footer>
+</body>
+</html>
